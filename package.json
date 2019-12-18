@@ -1,0 +1,47 @@
+{
+  "name": "FaldaxCron",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "dev": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node ./bin/www",
+    "debug": "nodemon --inspect ./bin/www"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aes-js": "^3.1.2",
+    "bluebird": "^3.5.3",
+    "body-parser": "^1.18.2",
+    "cors": "^2.8.4",
+    "cryptr": "^3.0.0",
+    "dom-parser": "^0.1.6",
+    "dotenv": "^5.0.1",
+    "ejs": "^3.0.1",
+    "express": "^4.16.3",
+    "express-group-routes": "^1.1.0",
+    "express-mailer": "^0.3.1",
+    "knex": "^0.14.6",
+    "moment": "^2.22.2",
+    "node-cron": "^1.2.1",
+    "node-fetch": "^2.3.0",
+    "nodemon": "^1.17.4",
+    "objection": "^1.1.7",
+    "objection-soft-delete": "^1.0.4",
+    "objection-visibility": "^0.2.0",
+    "pg": "^7.11.0",
+    "pug": "^2.0.3",
+    "randomatic": "^3.1.0",
+    "request": "^2.88.0",
+    "twilio": "^3.39.0",
+    "uuid": "^3.3.2",
+    "xml2json": "^0.11.2"
+  },
+  "devDependencies": {
+    "babel-plugin-transform-define": "^1.3.1",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-stage-2": "^6.24.1"
+  }
+}

@@ -1,0 +1,760 @@
+/**
+ * SimplexController
+ *
+ */
+const {
+  raw
+} = require('objection');
+var express = require('express');
+var app = express();
+var moment = require('moment');
+var fetch = require('node-fetch');
+const Bluebird = require('bluebird');
+fetch.Promise = Bluebird;
+var twilio = require('twilio');
+var aesjs = require('aes-js');
+var mailer = require('express-mailer');
+
+// Extra
+const constants = require('../../config/constants');
+// Controllers
+var {
+  AppController
+} = require('./AppController');
+
+// Models
+var NewsModel = require('../../models/News');
+var ThresholdModel = require('../../models/UserThresholds');
+var PriceHistoryModel = require('../../models/PriceHistory')
+var UserModel = require('../../models/UsersModel');
+var EmailTemplateModel = require('../../models/EmailTemplate');
+var SmsTemplateModel = require('../../models/SmsTemplate');
+var AdminSettingModel = require('../../models/AdminSetting');
+var SimplexTradeHistoryModel = require('../../models/SimplexTradeHistory');
+var Coins = require('../../models/Coins');
+var Wallet = require('../../models/Wallet');
+var ReferralModel = require('../../models/Referral');
+
+var request = require('request');
+var xmlParser = require('xml2json');
+var moment = require('moment');
+var DomParser = require('dom-parser');
+
+/**
+ * Users
+ * It's contains all the opration related with users table. Like userList, userDetails,
+ * createUser, updateUser, deleteUser and changeStatus
+ */
+class CronController extends AppController {
+
+  constructor() {
+    super();
+  }
+
+
+  // Method For Bitcoinist News Update
+  async bitcoinistNewsUpdate() {
+    try {
+      request('https://bitcoinist.com/feed/', async function (error, response, body) {
+        var json = xmlParser.toJson(body);
+        let res = JSON.parse(json);
+        let items = res.rss.channel.item;
+        for (let index = 0; index < items.length; index++) {
+          const element = items[index];
+          let records = await NewsModel
+            .query()
+            .where('title', element.title)
+            .orderBy('id', 'DESC');
+
+          if (records.length == 0) {
+            await NewsModel
+              .query()
+              .insert({
+                owner_id: 1,
+                title: element.title,
+                search_keywords: element.title.toLowerCase(),
+                link: element.link,
+                owner: "bitcoinist",
+                description: element.description,
+                cover_image: element['media:content'].url,
+                posted_at: moment(element.pubDate).format("YYYY-MM-DD hh:mm:ss")
+              });
+          }
+        }
+      });
+      return ("Done")
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+
+  // Method for Bitcoin News Update
+  async bitcoinNews() {
+    try {
+      request('https://news.bitcoin.com/feed/', async function (error, response, body) {
+
+        var json = xmlParser.toJson(body);
+        let res = JSON.parse(json);
+        let items = res.rss.channel.item;
+
+        for (let index = 0; index < items.length; index++) {
+          const element = items[index];
+          let records = await NewsModel
+            .query()
+            .where({
+              'title': element.title
+            })
+            .orderBy('id', 'DESC');
+
+          let parser = new DomParser();
+          htmlDoc = parser.parseFromString(element.description, "text/xml");
+
+          if (records.length == 0) {
+            await NewsModel
+              .query()
+              .insert({
+                owner_id: 3,
+                title: element.title,
+                search_keywords: element.title.toLowerCase(),
+                link: element.link,
+                owner: "bitcoin",
+                description: element.description,
+                cover_image: htmlDoc.getElementsByClassName("wp-post-image")[0].getAttribute('src'),
+                posted_at: moment(element.pubDate).format("YYYY-MM-DD hh:mm:ss")
+              });
+          }
+        }
+        return ("Done");
+      })
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  // Method for Coin Telegraph News Update
+  async coinTelegraph() {
+    try {
+      var options = {
+        url: 'http://cointelegraph.com/rss',
+        headers: {
+          'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36'
+        }
+      };
+      request(options, async function (error, response, body) {
+        var json = xmlParser.toJson(body);
+
+        let res = JSON.parse(json);
+        let items = res.rss.channel.item;
+        for (let index = 0; index < items.length; index++) {
+          const element = items[index];
+          let records = await NewsModel
+            .query()
+            .where({
+              'title': element.title
+            })
+            .orderBy('id', 'DESC');
+
+          if (records.length == 0) {
+            await NewsModel
+              .query()
+              .insert({
+                owner_id: 2,
+                title: element.title,
+                search_keywords: element.title.toLowerCase(),
+                link: element.link,
+                owner: "cointelegraph",
+                description: element.description,
+                cover_image: element['media:content'].url,
+                posted_at: moment(element.pubDate).format("YYYY-MM-DD hh:mm:ss")
+              });
+          }
+        }
+
+        return ("Done");
+      })
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  // Email Send To User
+  async email(slug, user) {
+    let emailData = await EmailTemplateModel
+      .query()
+      .first()
+      .where('deleted_at', null)
+      .andWhere('slug', slug)
+      .orderBy('id', 'DESC')
+
+    var object = {};
+    object.recipientName = user.first_name;
+
+    if (user.limitType && user.limitType != undefined && user.limitType != null)
+      object.limit = user.limitType
+
+    if (user.coinName && user.coinName != undefined && user.coinName != null)
+      object.coin = user.coinName
+
+    let content = emailData
+      .content
+      .replace("{{recipientName}}", user.full_name);
+    content = content.replace('{{limit}}', user.limitType);
+    content = content.replace('{{coin}}', user.coinName);
+    content = content.replace('{{product_name}}', "Faldax");
+
+    var allData = {
+      template: "emails/general_mail",
+      email: user.email,
+      extraData: content,
+      subject: "Threshold Notification"
+    }
+    await CronSendEmail(allData);
+
+  }
+
+  async getDecryptData(keyValue) {
+    var key = [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ];
+    var iv = [
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36
+    ]
+
+    // When ready to decrypt the hex string, convert it back to bytes
+    var encryptedBytes = aesjs
+      .utils
+      .hex
+      .toBytes(keyValue);
+
+    // The output feedback mode of operation maintains internal state, so to decrypt
+    // a new instance must be instantiated.
+    var aesOfb = new aesjs
+      .ModeOfOperation
+      .ofb(key, iv);
+
+    var decryptedBytes = aesOfb.decrypt(encryptedBytes);
+
+    // Convert our bytes back into text
+    let decryptedText = aesjs
+      .utils
+      .utf8
+      .fromBytes(decryptedBytes);
+
+    return decryptedText
+  }
+
+  async text(slug, user) {
+    try {
+      var account_sid = await module.exports.getDecryptData(process.env.TWILLIO_ACCOUNT_SID);
+      var accountSid = account_sid; // Your Account SID from www.twilio.com/console
+      var authToken = process.env.TWILLIO_ACCOUNT_AUTH_TOKEN; // Your Auth Token from www.twilio.com/console
+      var user_id = inputs.user.id;
+
+      //Template for sending Email
+      var bodyValue = await SmsTemplateModel
+        .query()
+        .where('deleted_at', null)
+        .andWhere('slug', slug)
+        .orderBy('id', 'DESC');
+
+      //Twilio Integration
+      var client = new twilio(accountSid, authToken);
+
+      //Sending SMS to users 
+      client.messages.create({
+          body: bodyValue.content,
+          to: inputs.user.phone_number, // Text this number
+          from: sails.config.local.TWILLIO_ACCOUNT_FROM_NUMBER // From a valid Twilio number
+        }).then((message) => {
+          return (1);
+        })
+        .catch((err) => {
+          console.log("ERROR >>>>>>>>>>>", err)
+        })
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  // User Threshold Notification
+  async checkTheresoldNotification() {
+    try {
+      // //Getting User Notification Details
+      let user = await ThresholdModel
+        .query()
+        .where({
+          'deleted_at': null
+        });
+
+      var data = '/USD'
+
+      var values = await PriceHistoryModel
+        .query()
+        .where('coin', 'like', '%' + data + '%')
+        .andWhere('ask_price', '>', 0)
+        .orderBy('coin', 'DESC')
+        .orderBy('created_at', 'DESC')
+        .groupBy('coin')
+        .groupBy('id')
+        .limit(100);
+
+      for (let index = 0; index < user.length; index++) {
+        const element = user[index];
+        var assetValue = element.asset;
+        var userData = await UserModel
+          .query()
+          .first()
+          .where('id', element.user_id)
+          .andWhere('is_active', true)
+          .andWhere('deleted_at', null)
+          .andWhere('is_verified', true)
+          .orderBy('id', 'DESC');
+
+        for (var i = 0; i < assetValue.length; i++) {
+          for (var k = 0; k < values.length; k++) {
+            var coinValue = assetValue[i].coin + '/USD'
+            if (values[k].coin == coinValue) {
+              userData.coinName = assetValue[i].coin
+              if (assetValue[i].upper_limit != undefined && assetValue[i].upper_limit != null) {
+                if (values[k].ask_price >= assetValue[i].upper_limit) {
+                  if (userData) {
+                    userData.limitType = "Upper Limit"
+                    if (assetValue[i].is_email_notification == true || assetValue[i].is_email_notification == "true") {
+                      if (userData.email != undefined) {
+                        await module.exports.email("thresold_notification", userData)
+                      }
+                    }
+                    if (assetValue[i].is_sms_notification == true || assetValue[i].is_sms_notification == "true") {
+                      if (userData.phone_number != undefined)
+                        await module.exports.text("thresold_notification", userData)
+                    }
+                  }
+                }
+              }
+
+              if (assetValue[i].lower_limit != undefined && assetValue[i].lower_limit != null) {
+                if (values[k].ask_price <= assetValue[i].lower_limit) {
+                  if (userData) {
+                    userData.limitType = "Lower Limit";
+                    if (assetValue[i].is_email_notification == true || assetValue[i].is_email_notification == "true") {
+                      if (userData.email != undefined) {
+                        await module.exports.email("thresold_notification", userData)
+                      }
+                    }
+                    if (assetValue[i].is_sms_notification == true || assetValue[i].is_sms_notification == "true") {
+                      if (userData.phone_number != undefined)
+                        await module.exports.text("thresold_notification", userData)
+                    }
+                  }
+                }
+              }
+
+            }
+          }
+        }
+      }
+
+      return (1)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  async deleteEvent(event_id) {
+    try {
+      var keyValue = await AdminSettingModel
+        .query()
+        .first()
+        .select()
+        .where('deleted_at', null)
+        .andWhere('slug', 'access_token')
+        .orderBy('id', 'DESC')
+
+      var decryptedText = await module
+        .exports
+        .getDecryptData(keyValue.value);
+
+      var promise = await new Promise(async function (resolve, reject) {
+        await request
+          .delete(process.env.SIMPLEX_URL + "events/" + event_id, {
+            headers: {
+              'Authorization': 'ApiKey ' + decryptedText,
+              'Content-Type': 'application/json'
+            }
+          }, function (err, res, body) {
+            console.log(res.body);
+            return (res.body)
+          });
+      })
+      return promise;
+
+    } catch (err) {
+      console.log(err);
+      await logger.error(err.message)
+    }
+  }
+
+  async getEventData() {
+    try {
+      var keyValue = await AdminSettingModel
+        .query()
+        .first()
+        .select()
+        .where('deleted_at', null)
+        .andWhere('slug', 'access_token')
+        .orderBy('id', 'DESC')
+
+      var decryptedText = await module
+        .exports
+        .getDecryptData(keyValue.value);
+
+      var promise = await new Promise(async function (resolve, reject) {
+        await request
+          .get(process.env.SIMPLEX_URL + 'events', {
+            headers: {
+              'Authorization': 'ApiKey ' + decryptedText,
+              'Content-Type': 'application/json'
+            }
+          }, function (err, res, body) {
+            resolve(JSON.parse(res.body));
+          });
+      })
+
+      return promise;
+
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async getReferredData(trade_object, user_id, transaction_id) {
+    try {
+      var referral_percentage = 0;
+      var collectedAmount = 0;
+      var collectCoin;
+      var coinData;
+      var referralData = await UserModel
+        .query()
+        .where('deleted_at', null)
+        .andWhere('is_active', true)
+        .andWhere('id', user_id)
+        .orderBy('id', 'DESC')
+
+      var referredUserData = await UserModel
+        .query()
+        .where('deleted_at', null)
+        .andWhere('is_active', true)
+        .andWhere('id', referralData.referred_id)
+        .orderBy('id', 'DESC');
+
+      var addRefferalAddData = {};
+
+      if (referredUserData !== undefined && referredUserData.referal_percentage > 0) {
+        referral_percentage = parseFloat(referredUserData.referal_percentage);
+      } else {
+        var referal_data = await AdminSettingModel
+          .query()
+          .where('deleted_at', null)
+          .andWhere('slug', 'default_referral_percentage')
+          .orderBy('id', 'DESC')
+        referral_percentage = parseFloat(referal_data.value);
+      }
+
+      if (referredUserData != undefined) {
+        if (trade_object[0].flag == 1) {
+          if (trade_object[0].side == 'Buy') {
+            collectedAmount = parseFloat((trade_object[0].faldax_fees * (referral_percentage / 100)))
+            var symbol = (trade_object[0].symbol).replace("/", '-');
+            var data = symbol
+              .split("-");
+            var crypto = data[0];
+            var currency = data[1]
+
+            collectCoin = crypto
+            coinData = await Coins
+              .query()
+              .where('is_active', true)
+              .andWhere('deleted_at', null)
+              .andWhere('coin', collectCoin);
+
+            addRefferalAddData.coin_id = coinData.id;
+            addRefferalAddData.amount = collectedAmount;
+            addRefferalAddData.coin_name = collectCoin;
+            addRefferalAddData.user_id = referredUserData.id;
+            addRefferalAddData.referred_user_id = referralData.id;
+            addRefferalAddData.txid = inputs.transaction_id;
+            addRefferalAddData.is_collected = false;
+
+            var addedData = await ReferralModel
+              .query()
+              .insert(addRefferalAddData)
+
+          } else if (trade_object[0].side == 'Sell') {
+            collectedAmount = parseFloat((trade_object[0].faldax_fees * (referral_percentage / 100)))
+            var symbol = (trade_object[0].symbol).replace("/", '-');
+            var data = symbol
+              .split("-");
+            var crypto = data[0];
+            var currency = data[1]
+            collectCoin = currency
+            coinData = await Coins
+              .query()
+              .where('is_active', true)
+              .andWhere('deleted_at', null)
+              .andWhere('coin', collectCoin);
+            addRefferalAddData.coin_id = coinData.id;
+            addRefferalAddData.amount = collectedAmount;
+            addRefferalAddData.coin_name = collectCoin;
+            addRefferalAddData.user_id = referredUserData.id;
+            addRefferalAddData.referred_user_id = referralData.id;
+            addRefferalAddData.txid = inputs.transaction_id;
+            addRefferalAddData.is_collected = false;
+
+            var addedData = await ReferralModel
+              .query()
+              .insert(addRefferalAddData)
+          }
+        }
+        var userNotification = await UserNotification
+          .query()
+          .where('user_id', referredUserData.id)
+          .andWhere('deleted_at', null)
+          .andWhere('slug', 'referal');
+        console.log(userNotification)
+
+        if (userNotification && userNotification != undefined) {
+          console.log(userNotification.email)
+          if (userNotification.email == true || userNotification.email == "true") {
+            await module.exports.email("thresold_notification", referredUserData)
+          }
+          if (userNotification.text == true || userNotification.text == "true") {
+            await module.exports.text("thresold_notification", referredUserData)
+          }
+        }
+      }
+      return (1)
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async checkPaymentStatus() {
+    try {
+      console.log("Inside this method????????")
+      var data = await module
+        .exports
+        .getEventData();
+      console.log(data);
+      var tradeData = await SimplexTradeHistoryModel
+        .query()
+        .select()
+        .where('deleted_at', null)
+        .andWhere('trade_type', 3)
+        .orderBy('id', 'DESC');
+
+      for (var i = 0; i < tradeData.length; i++) {
+        for (var j = 0; j < data.events.length; j++) {
+          var payment_data = JSON.stringify(data.events[j].payment);
+          payment_data = JSON.parse(payment_data);
+          console.log(payment_data)
+          console.log(payment_data.id == tradeData[i].payment_id)
+          console.log(tradeData[i].payment_id);
+          console.log(payment_data.status == "pending_simplexcc_payment_to_partner");
+          if (payment_data.id == tradeData[i].payment_id && payment_data.status == "pending_simplexcc_payment_to_partner") {
+            var feesFaldax = await AdminSettingModel
+              .query()
+              .first()
+              .select()
+              .where('deleted_at', null)
+              .andWhere('slug', 'simplex_faldax_fees')
+              .orderBy('id', 'DESC')
+
+            var coinData = await Coins
+              .query()
+              .first()
+              .select()
+              .where('deleted_at', null)
+              .andWhere('is_active', true)
+              .andWhere('coin', tradeData[i].currency)
+              .orderBy('id', 'DESC');
+
+            var walletData = await Wallet
+              .query()
+              .first()
+              .select()
+              .where('coin_id', coinData.id)
+              .andWhere('deleted_at', null)
+              .andWhere('receive_address', tradeData[i].address)
+              .andWhere('user_id', tradeData[i].user_id)
+              .orderBy('id', 'DESC');
+
+            if (walletData != undefined) {
+              var balanceData = parseFloat(walletData.balance) + (tradeData[i].fill_price)
+              var placedBalanceData = parseFloat(walletData.placed_balance) + (tradeData[i].fill_price)
+              var walletUpdate = await walletData
+                .$query()
+                .patch({
+                  balance: balanceData,
+                  placed_balance: placedBalanceData
+                });
+
+              var walletUpdated = await Wallet
+                .query()
+                .first()
+                .select()
+                .where('coin_id', coinData.id)
+                .andWhere('deleted_at', null)
+                .andWhere('is_admin', true)
+                .andWhere('user_id', 36)
+                .orderBy('id', 'DESC');
+
+              if (walletUpdated != undefined) {
+                var balance = parseFloat(walletUpdated.balance) + (tradeData[i].fill_price);
+                var placed_balance = parseFloat(walletUpdated.placed_balance) + (tradeData[i].fill_price);
+                var walletUpdated = await walletUpdated
+                  .$query()
+                  .patch({
+                    balance: balance,
+                    placed_balance: placed_balance
+                  })
+              }
+            }
+            if (tradeData[i].simplex_payment_status == 1) {
+              var tradeHistoryData = await SimplexTradeHistoryModel
+                .query()
+                .select()
+                .first()
+                .where('id', tradeData[i].id)
+                .patch({
+                  simplex_payment_status: 2,
+                  is_processed: true
+                });
+
+              let referredData = await module.exports.getReferredData(tradeHistoryData, tradeHistoryData.user_id, tradeData[i].id);
+
+              console.log(data.events[j].id);
+              await module.exports.deleteEvent(data.events[j].event_id)
+            }
+          } else if (payment_data.id == tradeData[i].payment_id) {
+            console.log("ELSE IF >>>>>>>>>>>>>")
+            if (payment_data.status == "pending_simplexcc_approval") {
+              console.log("IF ????????????")
+              var tradeHistoryData = await SimplexTradeHistoryModel
+                .query()
+                .select()
+                .first()
+                .where('id', tradeData[i].id)
+                .patch({
+                  simplex_payment_status: 2,
+                  is_processed: true
+                });
+
+              console.log("Deleteing the event in else", data.events[j].event_id)
+
+              await module.exports.deleteEvent(data.events[j].event_id);
+
+              var referData = await ReferralModel
+                .query()
+                .first()
+                .where('deleted_at', null)
+                .andWhere('txid', tradeData[i].id)
+                .orderBy('id', 'DESC')
+
+              if (referData != undefined) {
+                let referredData = await module.exports.getReferredData(tradeHistoryData, tradeHistoryData.user_id, tradeData[i].id);
+              }
+            } else if (payment_data.status == "cancelled") {
+              var tradeHistoryData = await SimplexTradeHistoryModel
+                .query()
+                .select()
+                .first()
+                .where('id', tradeData[i].id)
+                .patch({
+                  simplex_payment_status: 3,
+                  is_processed: true
+                });
+              console.log("deleting thsi event further>>>>", data.events[j].event_id);
+              await module.exports.deleteEvent(data.events[j].event_id)
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.log(err);
+      await logger.error(err.message)
+    }
+  }
+
+  async getMarketPrice(symbol) {
+    try {
+      request({
+        url: process.env.JST_MARKET_URL + '/Market/GetQuote?symbol=' + symbol,
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        json: true
+      }, async function (err, httpResponse, body) {
+        console.log("JST Market Price");
+        console.log("JST Error", err);
+        if (err) {
+          return (err);
+        }
+        console.log("JST Body", body);
+        if (body.error) {
+          return (body);
+        }
+        // Add data in table
+        let object_data = {
+          coin: symbol,
+          ask_price: body.Ask,
+          ask_size: body.AskSize,
+          bid_price: body.Bid,
+          bid_size: body.BidSize,
+        };
+        await PriceHistoryModel
+          .query()
+          .insert(object_data);
+        //ends
+
+        return (body);
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+}
+
+module.exports = new CronController();
