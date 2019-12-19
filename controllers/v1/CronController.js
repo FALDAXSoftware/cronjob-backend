@@ -34,14 +34,32 @@ var SimplexTradeHistoryModel = require('../../models/SimplexTradeHistory');
 var Coins = require('../../models/Coins');
 var Wallet = require('../../models/Wallet');
 var ReferralModel = require('../../models/Referral');
+var KYCModel = require('../../models/KYC');
 
 var request = require('request');
 var xmlParser = require('xml2json');
 var moment = require('moment');
 var DomParser = require('dom-parser');
+const image2base64 = require('image-to-base64');
+var kycDocType = '';
+const countryData = require('../../config/country');
+var AWS = require('aws-sdk');
+var s3 = new AWS.S3();
+AWS
+  .config
+  .loadFromPath('config/aws_config.json');
+var s3 = new AWS.S3({
+  signatureVersion: 'v4'
+});
+var S3BucketName = "production-static-asset";
+var s3bucket = new AWS.S3({
+  params: {
+    Bucket: 'production-static-asset'
+  }
+});
 
 /**
- * Users
+ * Cron
  * It's contains all the opration related with users table. Like userList, userDetails,
  * createUser, updateUser, deleteUser and changeStatus
  */
@@ -413,7 +431,6 @@ class CronController extends AppController {
               'Content-Type': 'application/json'
             }
           }, function (err, res, body) {
-            console.log(res.body);
             return (res.body)
           });
       })
@@ -551,10 +568,8 @@ class CronController extends AppController {
           .where('user_id', referredUserData.id)
           .andWhere('deleted_at', null)
           .andWhere('slug', 'referal');
-        console.log(userNotification)
 
         if (userNotification && userNotification != undefined) {
-          console.log(userNotification.email)
           if (userNotification.email == true || userNotification.email == "true") {
             await module.exports.email("thresold_notification", referredUserData)
           }
@@ -571,11 +586,9 @@ class CronController extends AppController {
 
   async checkPaymentStatus() {
     try {
-      console.log("Inside this method????????")
       var data = await module
         .exports
         .getEventData();
-      console.log(data);
       var tradeData = await SimplexTradeHistoryModel
         .query()
         .select()
@@ -587,10 +600,6 @@ class CronController extends AppController {
         for (var j = 0; j < data.events.length; j++) {
           var payment_data = JSON.stringify(data.events[j].payment);
           payment_data = JSON.parse(payment_data);
-          console.log(payment_data)
-          console.log(payment_data.id == tradeData[i].payment_id)
-          console.log(tradeData[i].payment_id);
-          console.log(payment_data.status == "pending_simplexcc_payment_to_partner");
           if (payment_data.id == tradeData[i].payment_id && payment_data.status == "pending_simplexcc_payment_to_partner") {
             var feesFaldax = await AdminSettingModel
               .query()
@@ -663,13 +672,10 @@ class CronController extends AppController {
 
               let referredData = await module.exports.getReferredData(tradeHistoryData, tradeHistoryData.user_id, tradeData[i].id);
 
-              console.log(data.events[j].id);
               await module.exports.deleteEvent(data.events[j].event_id)
             }
           } else if (payment_data.id == tradeData[i].payment_id) {
-            console.log("ELSE IF >>>>>>>>>>>>>")
             if (payment_data.status == "pending_simplexcc_approval") {
-              console.log("IF ????????????")
               var tradeHistoryData = await SimplexTradeHistoryModel
                 .query()
                 .select()
@@ -679,8 +685,6 @@ class CronController extends AppController {
                   simplex_payment_status: 2,
                   is_processed: true
                 });
-
-              console.log("Deleteing the event in else", data.events[j].event_id)
 
               await module.exports.deleteEvent(data.events[j].event_id);
 
@@ -704,7 +708,6 @@ class CronController extends AppController {
                   simplex_payment_status: 3,
                   is_processed: true
                 });
-              console.log("deleting thsi event further>>>>", data.events[j].event_id);
               await module.exports.deleteEvent(data.events[j].event_id)
             }
           }
@@ -726,12 +729,9 @@ class CronController extends AppController {
         },
         json: true
       }, async function (err, httpResponse, body) {
-        console.log("JST Market Price");
-        console.log("JST Error", err);
         if (err) {
           return (err);
         }
-        console.log("JST Body", body);
         if (body.error) {
           return (body);
         }
@@ -752,6 +752,145 @@ class CronController extends AppController {
       });
     } catch (error) {
       console.log(error);
+    }
+  }
+  
+  async kycpicUpload(params) {
+    let kyc_details = await KYC
+      .query()
+      .first()
+      .where('id', params.id)
+      .orderBy('id', 'DESC');
+    
+    let user = await Users
+      .query()
+      .first()
+      .where('id', kyc_details.user_id)
+      .orderBy('id', 'DESC');
+    let kycUploadDetails = {};
+    if (!kyc_details.ssn) {
+      kycUploadDetails.docCountry = kyc_details.country_code;
+      kycUploadDetails.bco = kyc_details.country_code;
+    }
+    if (!kyc_details.ssn) {
+      await image2base64(process.env.AWS_S3_URL + kyc_details.front_doc)
+        .then((response) => {
+          kycUploadDetails.scanData = response;
+        }).catch(
+          (error) => {
+            console.log('error', error);
+          })
+
+      await image2base64(process.env.AWS_S3_URL + kyc_details.back_doc)
+        .then((response) => {
+          kycUploadDetails.backsideImageData = response;
+        }).catch(
+          (error) => {
+            console.log('error', error);
+          })
+    }
+
+    if (kyc_details.id_type == 1) {
+      kycUploadDetails.docType = 'PP';
+    } else if (kyc_details.id_type == 2) {
+      kycUploadDetails.docType = 'DL';
+    } else if (kyc_details.id_type == 3) {
+      kycUploadDetails.docType = 'ID';
+    } else {
+      kycUploadDetails.ssn = kyc_details.ssn;
+    }
+    kycUploadDetails.man = user.email;
+    kycUploadDetails.bfn = kyc_details.first_name;
+    kycUploadDetails.bln = kyc_details.last_name;
+    kycUploadDetails.bln = kyc_details.last_name;
+    kycUploadDetails.bsn = kyc_details.address;
+    if (kyc_details.address_2 !== null) {
+      kycUploadDetails.bsn = kycUploadDetails.bsn + ' ' + kyc_details.address_2;
+    }
+    kycUploadDetails.bc = kyc_details.city;
+    kycUploadDetails.bz = kyc_details.zip;
+    kycUploadDetails.dob = moment(kyc_details.dob, 'DD-MM-YYYY').format('YYYY-MM-DD');
+
+    var idm_key = await module.exports.getDecryptData(process.env.IDM_TOKEN);
+
+    request.post({
+      headers: {
+        'Authorization': 'Basic ' + idm_key
+      },
+      url: process.env.local.IDM_URL,
+      json: kycUploadDetails
+    }, async function (error, response, body) {
+      try {
+
+        kyc_details.direct_response = response.body.res;
+        kyc_details.webhook_response = null;
+        await KYC
+          .query()
+          .where('id', kyc_details.id)
+          .patch({
+            'direct_response': response.body.res,
+            'webhook_response': null,
+            'mtid': response.body.mtid,
+            'comments': response.body.frd,
+            'status': true,
+          });
+
+        if (kyc_details.front_doc != null) {
+          let profileData = {
+            Bucket: S3BucketName,
+            Key: kyc_details.front_doc
+          }
+
+          s3bucket.deleteObject(profileData, function (err, response) {
+            if (err) {
+              console.log(err)
+            } else {}
+          })
+        }
+        if (kyc_details.back_doc != null) {
+          let profileData = {
+            Bucket: S3BucketName,
+            Key: kyc_details.back_doc
+          }
+
+          s3bucket.deleteObject(profileData, function (err, response) {
+            if (err) {
+              console.log(err)
+            } else {}
+          })
+        }
+
+      } catch (error) {
+        console.log('error', error);
+        await KYC
+          .query()
+          .where('id', kyc_details.id)
+          .patch({
+            'direct_response': "MANUAL_REVIEW",
+            'webhook_response': "MANUAL_REVIEW",
+            'comments': "Could Not Verify",
+            'status': true,
+          })
+      }
+    });
+  }
+
+  async kyccron() {
+   try{ let pendingKYC = await KYCModel
+      .query()
+      .where('deleted_at', null)
+      .andWhere('status', false)
+      .andWhere('steps', 3)
+      .orderBy('id', 'DESC');
+
+     console.log(pendingKYC)
+    for (let index = 0; index < pendingKYC.length; index++) {
+      const element = pendingKYC[index];
+      console.log(element)
+      await module.exports.kycpicUpload(element);
+     }
+   } catch (error) {
+     console.log(error);
     }
   }
 

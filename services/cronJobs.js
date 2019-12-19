@@ -11,6 +11,11 @@ cron.schedule('0,5 * * * * *', async (req, res, next) => {
     await cronData.coinTelegraph();
 });
 
+cron.schedule('0,5 * * * * * ', async (req, res, next) => {
+    console.log("INSIDE KYC CRON >>>>>>>>")
+    await cronData.kyccron();
+})
+
 cron.schedule('0 */2 * * * *', async (req, res, next) => {
     console.log("Started Cron inside 2 minutes");
 })
