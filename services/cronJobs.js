@@ -4,31 +4,28 @@ var cron = require('node-cron');
 var cronData = require("../controllers/v1/CronController");
 
 // On Every Minute
-cron.schedule('0,5 * * * * *', async (req, res, next) => {
+cron.schedule('* * * * *', async (req, res, next) => {
     console.log("Started cron....");
     await cronData.bitcoinistNewsUpdate();
     await cronData.bitcoinistNewsUpdate();
     await cronData.coinTelegraph();
 });
 
-cron.schedule('0,5 * * * * * ', async (req, res, next) => {
-    console.log("INSIDE KYC CRON >>>>>>>>")
+
+cron.schedule('* * * * *', async (req, res, next) => {
+    console.log("Started Cron inside 2 minutes");
     await cronData.kyccron();
 })
 
-cron.schedule('0 */2 * * * *', async (req, res, next) => {
-    console.log("Started Cron inside 2 minutes");
-})
-
-cron.schedule('0,5 * * * * *', async (req, res, next) => {
+cron.schedule('* * * * *', async (req, res, next) => {
     await cronData.checkTheresoldNotification();
 });
 
-cron.schedule('0,5 * * * * *', async (req, res, next) => {
+cron.schedule('* * * * *', async (req, res, next) => {
     await cronData.checkPaymentStatus();
 });
 
-cron.schedule('0,5 * * * * *', async (req, res, next) => {
+cron.schedule('* * * * *', async (req, res, next) => {
     await cronData.getMarketPrice("XRP/USD");
     await cronData.getMarketPrice("BTC/USD");
     await cronData.getMarketPrice("LTC/USD");

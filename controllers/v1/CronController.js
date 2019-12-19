@@ -881,12 +881,10 @@ class CronController extends AppController {
       .where('deleted_at', null)
       .andWhere('status', false)
       .andWhere('steps', 3)
-      .orderBy('id', 'DESC');
-
-     console.log(pendingKYC)
+     .orderBy('id', 'DESC');
+     
     for (let index = 0; index < pendingKYC.length; index++) {
       const element = pendingKYC[index];
-      console.log(element)
       await module.exports.kycpicUpload(element);
      }
    } catch (error) {

@@ -18,7 +18,7 @@ app.set('views', __dirname + '/views');
 // Set template engin for view files
 app.set('view engine', 'ejs');
 // SMTP setting
-console.log(process.env.MAIL_HOST)
+
 mailer.extend(app, {
   from: process.env.MAIL_FROM_NAME,
   host: process.env.MAIL_HOST, // hostname
