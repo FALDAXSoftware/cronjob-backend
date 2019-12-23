@@ -27,6 +27,10 @@ podTemplate(label: label, containers: [
                     imageTag = shortGitCommit
                     namespace = getNamespace(myRepo.GIT_BRANCH);
                     if (namespace) {
+                    withAWS(credentials:'jenkins_s3_upload') {
+                        s3Download(file:'.env', bucket:'env.faldax', path:"faldax-cronjob/${namespace}/.env", force:true)
+                    }
+
                         sh "ls -a"
                         sh "docker build -t ${imageRepo}/cronjob:${imageTag}  ."
                         sh "docker push  ${imageRepo}/cronjob:${imageTag}"
