@@ -311,12 +311,12 @@ class CronController extends AppController {
 
       //Sending SMS to users 
       client.messages.create({
-          body: bodyValue.content,
-          to: inputs.user.phone_number, // Text this number
-          from: sails.config.local.TWILLIO_ACCOUNT_FROM_NUMBER // From a valid Twilio number
-        }).then((message) => {
-          return (1);
-        })
+        body: bodyValue.content,
+        to: inputs.user.phone_number, // Text this number
+        from: sails.config.local.TWILLIO_ACCOUNT_FROM_NUMBER // From a valid Twilio number
+      }).then((message) => {
+        return (1);
+      })
         .catch((err) => {
           console.log("ERROR >>>>>>>>>>>", err)
         })
@@ -411,17 +411,11 @@ class CronController extends AppController {
 
   async deleteEvent(event_id) {
     try {
-      var keyValue = await AdminSettingModel
-        .query()
-        .first()
-        .select()
-        .where('deleted_at', null)
-        .andWhere('slug', 'access_token')
-        .orderBy('id', 'DESC')
+      var keyValue = process.env.ACCESS_TOKEN
 
       var decryptedText = await module
         .exports
-        .getDecryptData(keyValue.value);
+        .getDecryptData(keyValue);
 
       var promise = await new Promise(async function (resolve, reject) {
         await request
@@ -444,17 +438,11 @@ class CronController extends AppController {
 
   async getEventData() {
     try {
-      var keyValue = await AdminSettingModel
-        .query()
-        .first()
-        .select()
-        .where('deleted_at', null)
-        .andWhere('slug', 'access_token')
-        .orderBy('id', 'DESC')
+      var keyValue = process.env.ACCESS_TOKEN
 
       var decryptedText = await module
         .exports
-        .getDecryptData(keyValue.value);
+        .getDecryptData(keyValue);
 
       var promise = await new Promise(async function (resolve, reject) {
         await request
@@ -754,14 +742,14 @@ class CronController extends AppController {
       console.log(error);
     }
   }
-  
+
   async kycpicUpload(params) {
     let kyc_details = await KYC
       .query()
       .first()
       .where('id', params.id)
       .orderBy('id', 'DESC');
-    
+
     let user = await Users
       .query()
       .first()
@@ -844,7 +832,7 @@ class CronController extends AppController {
           s3bucket.deleteObject(profileData, function (err, response) {
             if (err) {
               console.log(err)
-            } else {}
+            } else { }
           })
         }
         if (kyc_details.back_doc != null) {
@@ -856,7 +844,7 @@ class CronController extends AppController {
           s3bucket.deleteObject(profileData, function (err, response) {
             if (err) {
               console.log(err)
-            } else {}
+            } else { }
           })
         }
 
@@ -876,19 +864,20 @@ class CronController extends AppController {
   }
 
   async kyccron() {
-   try{ let pendingKYC = await KYCModel
-      .query()
-      .where('deleted_at', null)
-      .andWhere('status', false)
-      .andWhere('steps', 3)
-     .orderBy('id', 'DESC');
-     
-    for (let index = 0; index < pendingKYC.length; index++) {
-      const element = pendingKYC[index];
-      await module.exports.kycpicUpload(element);
-     }
-   } catch (error) {
-     console.log(error);
+    try {
+      let pendingKYC = await KYCModel
+        .query()
+        .where('deleted_at', null)
+        .andWhere('status', false)
+        .andWhere('steps', 3)
+        .orderBy('id', 'DESC');
+
+      for (let index = 0; index < pendingKYC.length; index++) {
+        const element = pendingKYC[index];
+        await module.exports.kycpicUpload(element);
+      }
+    } catch (error) {
+      console.log(error);
     }
   }
 
