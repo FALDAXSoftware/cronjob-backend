@@ -38,3 +38,7 @@ cron.schedule('* * * * *', async (req, res, next) => {
     await cronData.getMarketPrice("XRP/ETH");
 
 });
+
+cron.schedule('* * * * *', async (req, res, next) => {
+    await cronData.addPriceFromCoinmarketData();
+})

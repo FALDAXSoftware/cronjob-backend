@@ -74,6 +74,7 @@ class CronController extends AppController {
   async bitcoinistNewsUpdate() {
     try {
       request('https://bitcoinist.com/feed/', async function (error, response, body) {
+        console.log(body)
         var json = xmlParser.toJson(body);
         let res = JSON.parse(json);
         let items = res.rss.channel.item;
@@ -232,42 +233,10 @@ class CronController extends AppController {
   }
 
   async getDecryptData(keyValue) {
-    var key = [
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10,
-      11,
-      12,
-      13,
-      14,
-      15,
-      16
-    ];
-    var iv = [
-      21,
-      22,
-      23,
-      24,
-      25,
-      26,
-      27,
-      28,
-      29,
-      30,
-      31,
-      32,
-      33,
-      34,
-      35,
-      36
-    ]
+    // var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
+    var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+    var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36]
+    // var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
 
     // When ready to decrypt the hex string, convert it back to bytes
     var encryptedBytes = aesjs
@@ -296,7 +265,8 @@ class CronController extends AppController {
     try {
       var account_sid = await module.exports.getDecryptData(process.env.TWILLIO_ACCOUNT_SID);
       var accountSid = account_sid; // Your Account SID from www.twilio.com/console
-      var authToken = process.env.TWILLIO_ACCOUNT_AUTH_TOKEN; // Your Auth Token from www.twilio.com/console
+      var authToken = await module.exports.getDecryptData(process.env.TWILLIO_ACCOUNT_AUTH_TOKEN) // Your Auth Token from www.twilio.com/console
+      var fromNumber = await module.exports.getDecryptData(process.env.TWILLIO_ACCOUNT_FROM_NUMBER)
       var user_id = inputs.user.id;
 
       //Template for sending Email
@@ -313,7 +283,7 @@ class CronController extends AppController {
       client.messages.create({
         body: bodyValue.content,
         to: inputs.user.phone_number, // Text this number
-        from: sails.config.local.TWILLIO_ACCOUNT_FROM_NUMBER // From a valid Twilio number
+        from: fromNumber // From a valid Twilio number
       }).then((message) => {
         return (1);
       })
@@ -438,11 +408,13 @@ class CronController extends AppController {
 
   async getEventData() {
     try {
-      var keyValue = process.env.ACCESS_TOKEN
+      var keyValue = process.env.SIMPLEX_ACCESS_TOKEN
 
       var decryptedText = await module
         .exports
         .getDecryptData(keyValue);
+
+      console.log(decryptedText);
 
       var promise = await new Promise(async function (resolve, reject) {
         await request
@@ -879,6 +851,49 @@ class CronController extends AppController {
     } catch (error) {
       console.log(error);
     }
+  }
+
+  async addPriceFromCoinmarketData() {
+    var keyValue = await module.exports.getDecryptData(process.env.COINMARKETCAP_MARKETPRICE)
+    var call = await fetch('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20', {
+      method: "GET",
+      headers: {
+        'X-CMC_PRO_API_KEY': keyValue
+      }
+    })
+    call.then(resData => resData.json())
+      .then(async resData => {
+        for (var i = 0; i < resData.length; i++) {
+          let price_object = {
+            coin: resData[i].symbol,
+            price: resData[i].quote.USD.price,
+            market_cap: resData[i].quote.USD.market_cap,
+            percent_change_1h: resData[i].quote.USD.percent_change_1h,
+            percent_change_24h: resData[i].quote.USD.percent_change_24h,
+            percent_change_7d: resData[i].quote.USD.percent_change_7d,
+            volume_24h: resData[i].quote.USD.volume_24h
+          };
+          let accountClass = TempCoinmarketcap.
+            query()
+            .insert(price_object);
+
+          for (var i = 0; i < resData.length; i++) {
+            let price_object = {
+              coin: resData[i].symbol,
+              price: resData[i].quote.USD.price,
+              market_cap: resData[i].quote.USD.market_cap,
+              percent_change_1h: resData[i].quote.USD.percent_change_1h,
+              percent_change_24h: resData[i].quote.USD.percent_change_24h,
+              percent_change_7d: resData[i].quote.USD.percent_change_7d,
+              volume_24h: resData[i].quote.USD.volume_24h
+            };
+
+            let accountClass = await TempCoinmarketcap
+              .query()
+              .insert(price_object);
+          }
+        }
+      })
   }
 
 }
