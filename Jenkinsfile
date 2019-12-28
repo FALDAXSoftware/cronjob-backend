@@ -28,7 +28,7 @@ podTemplate(label: label, containers: [
                     namespace = getNamespace(myRepo.GIT_BRANCH);
                     if (namespace) {
                     withAWS(credentials:'jenkins_s3_upload') {
-                        s3Download(file:'.env', bucket:'env.faldax', path:"faldax-cronjob/${namespace}/.env", force:true)
+                        s3Download(file:'.env', bucket:'env.faldax', path:"node-backend/${namespace}/.env", force:true)
                     }
 
                         sh "ls -a"
