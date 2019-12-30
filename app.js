@@ -20,13 +20,13 @@ app.set('view engine', 'ejs');
 // SMTP setting
 
 mailer.extend(app, {
-  from: process.env.MAIL_FROM_NAME,
-  host: process.env.MAIL_HOST, // hostname
+  from: process.env.EMAIL_DEFAULT_SENDING,
+  host: process.env.EMAIL_HOST, // hostname
   secureConnection: true, // use SSL
   port: 465, // port forSMTP
   auth: {
-    user: process.env.MAIL_USERNAME,
-    pass: process.env.MAIL_PASSWORD
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
   },
   transportMethod: "SMTP",
   // testMode: false
@@ -45,9 +45,9 @@ var server = http.createServer(app);
 // process.on('uncaughtException', function (error) {}); // Ignore error
 
 // Start the server
-app.set('port', process.env.PORT);
+app.set('port', process.env.CRON_PORT);
 server.listen(app.get('port'), function () {
-  console.log(process.env.PROJECT_NAME + " Application is running on " + process.env.PORT + " port....");
+  console.log(process.env.CRON_PROJECT_NAME + " Application is running on " + process.env.CRON_PORT + " port....");
 });
 
 CronSendEmail = async (requestedData) => {
@@ -57,15 +57,13 @@ CronSendEmail = async (requestedData) => {
   var extraData = requestedData.extraData;
   var subject = requestedData.subject;
 
-  console.log("requestedData", requestedData)
-
   await app.mailer
     .send(template, {
       to: email,
-      subject: process.env.MAIL_FROM_NAME + ': ' + subject,
+      subject: process.env.EMAIL_DEFAULT_SENDING + ': ' + subject,
       content: body,
       data: extraData, // All additional properties are also passed to the template as local variables.
-      PRODUCT_NAME: "Faldax",
+      PRODUCT_NAME: "FALDAX",
     }, function (err) {
       console.log(err)
       if (err) {
