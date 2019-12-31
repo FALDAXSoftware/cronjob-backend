@@ -877,7 +877,10 @@ class CronController extends AppController {
       try {
         console.log("body", body.data)
         var resData = body.data
+        console.log(resData.length)
         for (var i = 0; i < resData.length; i++) {
+          console.log(resData[i]);
+          console.log(resData[i].quote.USD.percent_change_1h)
           let price_object = {
             coin: resData[i].symbol,
             price: resData[i].quote.USD.price,
