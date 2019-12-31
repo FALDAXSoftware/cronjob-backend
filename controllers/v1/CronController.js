@@ -235,6 +235,8 @@ class CronController extends AppController {
   async getDecryptData(keyValue) {
     var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
     var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
+    // var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    // var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
 
     // When ready to decrypt the hex string, convert it back to bytes
     var encryptedBytes = aesjs
@@ -387,11 +389,11 @@ class CronController extends AppController {
 
       var promise = await new Promise(async function (resolve, reject) {
         await request
-          .delete(process.env.SIMPLEX_URL + "events/" + event_id, {
+          .get(process.env.SIMPLEX_BACKEND_URL + "/simplex/delete-event-data/" + event_id, {
             headers: {
-              'Authorization': 'ApiKey ' + decryptedText,
+              'X-token':'faldax-simplex-backend',
               'Content-Type': 'application/json'
-            }
+            }           
           }, function (err, res, body) {
             return (res.body)
           });
@@ -416,16 +418,13 @@ class CronController extends AppController {
 
       var promise = await new Promise(async function (resolve, reject) {
         await request
-          .get(process.env.SIMPLEX_URL + 'events', {
+          .get(process.env.SIMPLEX_BACKEND_URL + '/simplex/get-event-data', {
             headers: {
-              'Authorization': 'ApiKey ' + decryptedText,
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'X-token':'faldax-simplex-backend'
             }
           }, function (err, res, body) {
-            console.log("err", err);
-            console.log("res", res);
-            console.log("body", body);
-            resolve(JSON.parse(res.body));
+            resolve(body);
           });
       })
 
@@ -556,7 +555,8 @@ class CronController extends AppController {
         .where('deleted_at', null)
         .andWhere('trade_type', 3)
         .orderBy('id', 'DESC');
-
+     console.log("data",data);
+     console.log("tradeData",tradeData);
       for (var i = 0; i < tradeData.length; i++) {
         for (var j = 0; j < data.events.length; j++) {
           var payment_data = JSON.stringify(data.events[j].payment);
