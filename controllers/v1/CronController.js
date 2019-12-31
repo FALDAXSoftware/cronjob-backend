@@ -875,12 +875,8 @@ class CronController extends AppController {
       json: true
     }, async function (error, response, body) {
       try {
-        console.log("body", body.data)
         var resData = body.data
-        console.log(resData.length)
         for (var i = 0; i < resData.length; i++) {
-          console.log(resData[i]);
-          console.log(resData[i].quote.USD.percent_change_1h)
           let price_object = {
             coin: resData[i].symbol,
             price: resData[i].quote.USD.price,
@@ -890,8 +886,8 @@ class CronController extends AppController {
             percent_change_7d: resData[i].quote.USD.percent_change_7d,
             volume_24h: resData[i].quote.USD.volume_24h
           };
-          let accountClass = TempCoinmarketcap.
-            query()
+          let accountClass = await TempCoinmarketcap
+            .query()
             .insert(price_object);
         }
 
