@@ -875,10 +875,9 @@ class CronController extends AppController {
       json: true
     }, async function (error, response, body) {
       try {
-        console.log("error", error)
-        console.log("response", response)
-        console.log("body", body)
-        var resData = response
+        console.log("body", body.data)
+        var resData = body.data
+        console.log(bpdy.data)
         for (var i = 0; i < resData.length; i++) {
           let price_object = {
             coin: resData[i].symbol,
