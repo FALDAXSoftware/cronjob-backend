@@ -787,7 +787,6 @@ class CronController extends AppController {
       json: kycUploadDetails
     }, async function (error, response, body) {
       try {
-        console.log("kycpicUpload",kycpicUpload);
         console.log("error",error);
         console.log("process.env.IDM_URL",process.env.IDM_URL);
         kyc_details.direct_response = response.body.res;
@@ -863,13 +862,12 @@ class CronController extends AppController {
 
   async addPriceFromCoinmarketData() {
     var keyValue = await module.exports.getDecryptData(process.env.COINMARKETCAP_MARKETPRICE)
-    var call = await fetch('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20', {
+    fetch('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20', {
       method: "GET",
       headers: {
         'X-CMC_PRO_API_KEY': keyValue
       }
-    })
-    call.then(resData => resData.json())
+    }).then(resData => resData.json())
       .then(async resData => {
         for (var i = 0; i < resData.length; i++) {
           let price_object = {
