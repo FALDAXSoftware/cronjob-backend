@@ -783,7 +783,9 @@ class CronController extends AppController {
       json: kycUploadDetails
     }, async function (error, response, body) {
       try {
-
+        console.log("kycpicUpload",kycpicUpload);
+        console.log("error",error);
+        console.log("process.env.IDM_URL",process.env.IDM_URL);
         kyc_details.direct_response = response.body.res;
         kyc_details.webhook_response = null;
         await KYCModel
