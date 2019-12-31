@@ -865,30 +865,20 @@ class CronController extends AppController {
     console.log("process.env.CURRENCY", process.env.CURRENCY)
     console.log("keyValue", keyValue)
     console.log('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20')
-    fetch('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20', {
+    request({
+      url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20',
       method: "GET",
       headers: {
+        'Content-Type': 'application/json',
         'X-CMC_PRO_API_KEY': keyValue
-      }
-    }).then(resData => {
-      console.log(resData);
-      resData.json()
-    }).then(async resData => {
-      console.log("resData", resData)
-      for (var i = 0; i < resData.length; i++) {
-        let price_object = {
-          coin: resData[i].symbol,
-          price: resData[i].quote.USD.price,
-          market_cap: resData[i].quote.USD.market_cap,
-          percent_change_1h: resData[i].quote.USD.percent_change_1h,
-          percent_change_24h: resData[i].quote.USD.percent_change_24h,
-          percent_change_7d: resData[i].quote.USD.percent_change_7d,
-          volume_24h: resData[i].quote.USD.volume_24h
-        };
-        let accountClass = TempCoinmarketcap.
-          query()
-          .insert(price_object);
-
+      },
+      json: true
+    }, async function (error, response, body) {
+      try {
+        console.log("error", error)
+        console.log("response", response)
+        console.log("body", body)
+        var resData = response
         for (var i = 0; i < resData.length; i++) {
           let price_object = {
             coin: resData[i].symbol,
@@ -899,11 +889,38 @@ class CronController extends AppController {
             percent_change_7d: resData[i].quote.USD.percent_change_7d,
             volume_24h: resData[i].quote.USD.volume_24h
           };
-
-          let accountClass = await TempCoinmarketcap
-            .query()
+          let accountClass = TempCoinmarketcap.
+            query()
             .insert(price_object);
+
+          for (var i = 0; i < resData.length; i++) {
+            let price_object = {
+              coin: resData[i].symbol,
+              price: resData[i].quote.USD.price,
+              market_cap: resData[i].quote.USD.market_cap,
+              percent_change_1h: resData[i].quote.USD.percent_change_1h,
+              percent_change_24h: resData[i].quote.USD.percent_change_24h,
+              percent_change_7d: resData[i].quote.USD.percent_change_7d,
+              volume_24h: resData[i].quote.USD.volume_24h
+            };
+
+            let accountClass = await TempCoinmarketcap
+              .query()
+              .insert(price_object);
+          }
         }
+
+      } catch (error) {
+        console.log('error', error);
+        await KYCModel
+          .query()
+          .where('id', kyc_details.id)
+          .patch({
+            'direct_response': "MANUAL_REVIEW",
+            'webhook_response': "MANUAL_REVIEW",
+            'comments': "Could Not Verify",
+            'status': true,
+          })
       }
     })
   }
