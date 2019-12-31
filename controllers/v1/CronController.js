@@ -414,7 +414,7 @@ class CronController extends AppController {
         .getDecryptData(keyValue);
 
       console.log(decryptedText);
-      console.log("process.env.SIMPLEX_URL",process.env.SIMPLEX_URL);
+      console.log("process.env.SIMPLEX_URL", process.env.SIMPLEX_URL);
       var promise = await new Promise(async function (resolve, reject) {
         await request
           .get(process.env.SIMPLEX_URL + 'events', {
@@ -719,20 +719,20 @@ class CronController extends AppController {
 
   async kycpicUpload(params) {
     console.log("kycpicUpload=====");
-    console.log("params",params);
+    console.log("params", params);
     let kyc_details = await KYCModel
       .query()
       .first()
       .where('id', params.id)
       .orderBy('id', 'DESC');
-    console.log("kyc_details",kyc_details);
-    console.log("user_id",kyc_details.user_id);
+    console.log("kyc_details", kyc_details);
+    console.log("user_id", kyc_details.user_id);
     let user = await UserModel
       .query()
       .first()
       .where('id', kyc_details.user_id)
       .orderBy('id', 'DESC');
-    console.log("user",user);  
+    console.log("user", user);
     let kycUploadDetails = {};
     if (!kyc_details.ssn) {
       kycUploadDetails.docCountry = kyc_details.country_code;
@@ -778,7 +778,7 @@ class CronController extends AppController {
     kycUploadDetails.dob = moment(kyc_details.dob, 'DD-MM-YYYY').format('YYYY-MM-DD');
 
     var idm_key = await module.exports.getDecryptData(process.env.IDM_TOKEN);
-    console.log("idm_key",idm_key);
+    console.log("idm_key", idm_key);
     request.post({
       headers: {
         'Authorization': 'Basic ' + idm_key
@@ -787,8 +787,8 @@ class CronController extends AppController {
       json: kycUploadDetails
     }, async function (error, response, body) {
       try {
-        console.log("error",error);
-        console.log("process.env.IDM_URL",process.env.IDM_URL);
+        console.log("error", error);
+        console.log("process.env.IDM_URL", process.env.IDM_URL);
         kyc_details.direct_response = response.body.res;
         kyc_details.webhook_response = null;
         await KYCModel
@@ -850,7 +850,7 @@ class CronController extends AppController {
         .andWhere('status', false)
         .andWhere('steps', 3)
         .orderBy('id', 'DESC');
-      console.log("pendingKYC:",pendingKYC);
+      console.log("pendingKYC:", pendingKYC);
       for (let index = 0; index < pendingKYC.length; index++) {
         const element = pendingKYC[index];
         await module.exports.kycpicUpload(element);
@@ -862,6 +862,9 @@ class CronController extends AppController {
 
   async addPriceFromCoinmarketData() {
     var keyValue = await module.exports.getDecryptData(process.env.COINMARKETCAP_MARKETPRICE)
+    console.log("process.env.CURRENCY", process.env.CURRENCY)
+    console.log("keyValue", keyValue)
+    console.log('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20')
     fetch('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20', {
       method: "GET",
       headers: {
@@ -869,6 +872,7 @@ class CronController extends AppController {
       }
     }).then(resData => resData.json())
       .then(async resData => {
+        console.log("resData", resData)
         for (var i = 0; i < resData.length; i++) {
           let price_object = {
             coin: resData[i].symbol,
