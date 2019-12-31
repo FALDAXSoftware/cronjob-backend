@@ -870,9 +870,25 @@ class CronController extends AppController {
       headers: {
         'X-CMC_PRO_API_KEY': keyValue
       }
-    }).then(resData => resData.json())
-      .then(async resData => {
-        console.log("resData", resData)
+    }).then(resData => {
+      console.log(resData);
+      resData.json()
+    }).then(async resData => {
+      console.log("resData", resData)
+      for (var i = 0; i < resData.length; i++) {
+        let price_object = {
+          coin: resData[i].symbol,
+          price: resData[i].quote.USD.price,
+          market_cap: resData[i].quote.USD.market_cap,
+          percent_change_1h: resData[i].quote.USD.percent_change_1h,
+          percent_change_24h: resData[i].quote.USD.percent_change_24h,
+          percent_change_7d: resData[i].quote.USD.percent_change_7d,
+          volume_24h: resData[i].quote.USD.volume_24h
+        };
+        let accountClass = TempCoinmarketcap.
+          query()
+          .insert(price_object);
+
         for (var i = 0; i < resData.length; i++) {
           let price_object = {
             coin: resData[i].symbol,
@@ -883,27 +899,13 @@ class CronController extends AppController {
             percent_change_7d: resData[i].quote.USD.percent_change_7d,
             volume_24h: resData[i].quote.USD.volume_24h
           };
-          let accountClass = TempCoinmarketcap.
-            query()
+
+          let accountClass = await TempCoinmarketcap
+            .query()
             .insert(price_object);
-
-          for (var i = 0; i < resData.length; i++) {
-            let price_object = {
-              coin: resData[i].symbol,
-              price: resData[i].quote.USD.price,
-              market_cap: resData[i].quote.USD.market_cap,
-              percent_change_1h: resData[i].quote.USD.percent_change_1h,
-              percent_change_24h: resData[i].quote.USD.percent_change_24h,
-              percent_change_7d: resData[i].quote.USD.percent_change_7d,
-              volume_24h: resData[i].quote.USD.volume_24h
-            };
-
-            let accountClass = await TempCoinmarketcap
-              .query()
-              .insert(price_object);
-          }
         }
-      })
+      }
+    })
   }
 
 }
