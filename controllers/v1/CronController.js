@@ -412,6 +412,8 @@ class CronController extends AppController {
         .exports
         .getDecryptData(keyValue);
 
+      console.log("decryptedText", decryptedText)
+
       var promise = await new Promise(async function (resolve, reject) {
         await request
           .get(process.env.SIMPLEX_URL + 'events', {
@@ -420,9 +422,9 @@ class CronController extends AppController {
               'Content-Type': 'application/json'
             }
           }, function (err, res, body) {
-            // console.log("err",err);
-            // console.log("res",res);
-            // console.log("body",body);
+            console.log("err", err);
+            console.log("res", res);
+            console.log("body", body);
             resolve(JSON.parse(res.body));
           });
       })
