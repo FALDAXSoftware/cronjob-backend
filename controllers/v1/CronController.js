@@ -865,7 +865,7 @@ class CronController extends AppController {
     console.log("process.env.CURRENCY", process.env.CURRENCY)
     console.log("keyValue", keyValue)
     console.log('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20')
-    request({
+    await request({
       url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20',
       method: "GET",
       headers: {
@@ -912,15 +912,6 @@ class CronController extends AppController {
 
       } catch (error) {
         console.log('error', error);
-        await KYCModel
-          .query()
-          .where('id', kyc_details.id)
-          .patch({
-            'direct_response': "MANUAL_REVIEW",
-            'webhook_response': "MANUAL_REVIEW",
-            'comments': "Could Not Verify",
-            'status': true,
-          })
       }
     })
   }
