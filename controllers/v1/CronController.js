@@ -414,7 +414,7 @@ class CronController extends AppController {
         .getDecryptData(keyValue);
 
       console.log(decryptedText);
-
+      console.log("process.env.SIMPLEX_URL",process.env.SIMPLEX_URL);
       var promise = await new Promise(async function (resolve, reject) {
         await request
           .get(process.env.SIMPLEX_URL + 'events', {
@@ -423,6 +423,9 @@ class CronController extends AppController {
               'Content-Type': 'application/json'
             }
           }, function (err, res, body) {
+            console.log("err",err);
+            console.log("res",res);
+            console.log("body",body);
             resolve(JSON.parse(res.body));
           });
       })
@@ -776,7 +779,7 @@ class CronController extends AppController {
       headers: {
         'Authorization': 'Basic ' + idm_key
       },
-      url: process.env.local.IDM_URL,
+      url: process.env.IDM_URL,
       json: kycUploadDetails
     }, async function (error, response, body) {
       try {
@@ -842,7 +845,7 @@ class CronController extends AppController {
         .andWhere('status', false)
         .andWhere('steps', 3)
         .orderBy('id', 'DESC');
-
+      console.log("pendingKYC:",pendingKYC);
       for (let index = 0; index < pendingKYC.length; index++) {
         const element = pendingKYC[index];
         await module.exports.kycpicUpload(element);
