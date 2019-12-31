@@ -433,7 +433,7 @@ class CronController extends AppController {
       return promise;
 
     } catch (error) {
-      console.log(error);
+      // console.log(error);
     }
   }
 
@@ -726,6 +726,7 @@ class CronController extends AppController {
       .where('id', params.id)
       .orderBy('id', 'DESC');
     console.log("kyc_details",kyc_details);
+    console.log("user_id",kyc_details.user_id);
     let user = await UserModel
       .query()
       .first()
