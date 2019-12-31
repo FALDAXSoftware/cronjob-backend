@@ -23,7 +23,7 @@ podTemplate(label: label, containers: [
                 container('build-container'){
                     def myRepo = checkout scm
                     gitCommit = myRepo.GIT_COMMIT
-                    shortGitCommit = "${gitCommit[0..10]}"
+                    shortGitCommit = "${gitCommit[0..10]}${env.BUILD_NUMBER}"
                     imageTag = shortGitCommit
                     namespace = getNamespace(myRepo.GIT_BRANCH);
                     if (namespace) {
