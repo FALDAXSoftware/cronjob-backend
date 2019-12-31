@@ -423,9 +423,9 @@ class CronController extends AppController {
               'Content-Type': 'application/json'
             }
           }, function (err, res, body) {
-            console.log("err",err);
-            console.log("res",res);
-            console.log("body",body);
+            // console.log("err",err);
+            // console.log("res",res);
+            // console.log("body",body);
             resolve(JSON.parse(res.body));
           });
       })
@@ -718,17 +718,20 @@ class CronController extends AppController {
   }
 
   async kycpicUpload(params) {
+    console.log("kycpicUpload=====");
+    console.log("params",params);
     let kyc_details = await KYCModel
       .query()
       .first()
       .where('id', params.id)
       .orderBy('id', 'DESC');
-
+    console.log("kyc_details",kyc_details);
     let user = await UserModel
       .query()
       .first()
       .where('id', kyc_details.user_id)
       .orderBy('id', 'DESC');
+    console.log("user",user);  
     let kycUploadDetails = {};
     if (!kyc_details.ssn) {
       kycUploadDetails.docCountry = kyc_details.country_code;
@@ -774,7 +777,7 @@ class CronController extends AppController {
     kycUploadDetails.dob = moment(kyc_details.dob, 'DD-MM-YYYY').format('YYYY-MM-DD');
 
     var idm_key = await module.exports.getDecryptData(process.env.IDM_TOKEN);
-
+    console.log("idm_key",idm_key);
     request.post({
       headers: {
         'Authorization': 'Basic ' + idm_key
