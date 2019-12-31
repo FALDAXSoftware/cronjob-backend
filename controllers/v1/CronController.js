@@ -35,6 +35,7 @@ var Coins = require('../../models/Coins');
 var Wallet = require('../../models/Wallet');
 var ReferralModel = require('../../models/Referral');
 var KYCModel = require('../../models/KYC');
+var TempCoinmarketcap = require('../../models/TempCoinMarketCap');
 
 var request = require('request');
 var xmlParser = require('xml2json');
@@ -714,13 +715,13 @@ class CronController extends AppController {
   }
 
   async kycpicUpload(params) {
-    let kyc_details = await KYC
+    let kyc_details = await KYCModel
       .query()
       .first()
       .where('id', params.id)
       .orderBy('id', 'DESC');
 
-    let user = await Users
+    let user = await UserModel
       .query()
       .first()
       .where('id', kyc_details.user_id)
@@ -782,7 +783,7 @@ class CronController extends AppController {
 
         kyc_details.direct_response = response.body.res;
         kyc_details.webhook_response = null;
-        await KYC
+        await KYCModel
           .query()
           .where('id', kyc_details.id)
           .patch({
@@ -820,7 +821,7 @@ class CronController extends AppController {
 
       } catch (error) {
         console.log('error', error);
-        await KYC
+        await KYCModel
           .query()
           .where('id', kyc_details.id)
           .patch({
