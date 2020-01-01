@@ -365,7 +365,7 @@ class CronController extends AppController {
         body: bodyValue.content,
         to: inputs.user.phone_number, // Text this number
         from: fromNumber // From a valid Twilio number
-      }).then((message) => {
+      }).then(async (message) => {
         await logger.info({
           "module": "User Text Sending",
           "user_id": "user_text",
@@ -374,7 +374,7 @@ class CronController extends AppController {
         }, "SMS sent successfully")
         return (1);
       })
-        .catch((err) => {
+        .catch(async (err) => {
           console.log("ERROR >>>>>>>>>>>", err)
           await logger.error({
             "module": "User Text Sending",
@@ -514,9 +514,9 @@ class CronController extends AppController {
         await request
           .get(process.env.SIMPLEX_BACKEND_URL + "/simplex/delete-event-data/" + event_id, {
             headers: {
-              'X-token':'faldax-simplex-backend',
+              'X-token': 'faldax-simplex-backend',
               'Content-Type': 'application/json'
-            }           
+            }
           }, function (err, res, body) {
             return (res.body)
           });
@@ -561,7 +561,7 @@ class CronController extends AppController {
           .get(process.env.SIMPLEX_BACKEND_URL + '/simplex/get-event-data', {
             headers: {
               'Content-Type': 'application/json',
-              'X-token':'faldax-simplex-backend'
+              'X-token': 'faldax-simplex-backend'
             }
           }, function (err, res, body) {
             resolve(body);
@@ -731,8 +731,8 @@ class CronController extends AppController {
         .where('deleted_at', null)
         .andWhere('trade_type', 3)
         .orderBy('id', 'DESC');
-     console.log("data",data);
-     console.log("tradeData",tradeData);
+      console.log("data", data);
+      console.log("tradeData", tradeData);
       for (var i = 0; i < tradeData.length; i++) {
         for (var j = 0; j < data.events.length; j++) {
           var payment_data = JSON.stringify(data.events[j].payment);
