@@ -21,6 +21,7 @@ const constants = require('../../config/constants');
 var {
   AppController
 } = require('./AppController');
+var logger = require("./logger");
 
 // Models
 var NewsModel = require('../../models/News');
@@ -74,6 +75,12 @@ class CronController extends AppController {
   // Method For Bitcoinist News Update
   async bitcoinistNewsUpdate() {
     try {
+      await logger.info({
+        "module": "Bitcoinist News Update",
+        "user_id": "user_bitcoin",
+        "url": "Cron Function",
+        "type": "Entry"
+      }, "Entered the function")
       request('https://bitcoinist.com/feed/', async function (error, response, body) {
         var json = xmlParser.toJson(body);
         let res = JSON.parse(json);
@@ -100,10 +107,22 @@ class CronController extends AppController {
               });
           }
         }
+        await logger.info({
+          "module": "Bitcoinist News Update",
+          "user_id": "user_bitcoin",
+          "url": "Cron Function",
+          "type": "Success"
+        }, "Data Updated Successfully.")
       });
       return ("Done")
     } catch (error) {
       console.log(error)
+      await logger.error({
+        "module": "Bitcoinist News Update",
+        "user_id": "user_bitcoin",
+        "url": "Cron Function",
+        "type": "Error"
+      }, error)
     }
   }
 
@@ -112,7 +131,12 @@ class CronController extends AppController {
   async bitcoinNews() {
     try {
       request('https://news.bitcoin.com/feed/', async function (error, response, body) {
-
+        await logger.info({
+          "module": "Bitcoin News Update",
+          "user_id": "user_bitcoin",
+          "url": "Cron Function",
+          "type": "Entry"
+        }, "Entered the function")
         var json = xmlParser.toJson(body);
         let res = JSON.parse(json);
         let items = res.rss.channel.item;
@@ -144,16 +168,34 @@ class CronController extends AppController {
               });
           }
         }
+        await logger.info({
+          "module": "Bitcoin News Update",
+          "user_id": "user_bitcoin",
+          "url": "Cron Function",
+          "type": "Success"
+        }, "Bitcoin Data updated successfully")
         return ("Done");
       })
     } catch (error) {
       console.log(error)
+      await logger.error({
+        "module": "Bitcoin News Update",
+        "user_id": "user_bitcoin",
+        "url": "Cron Function",
+        "type": "Error"
+      }, error)
     }
   }
 
   // Method for Coin Telegraph News Update
   async coinTelegraph() {
     try {
+      await logger.info({
+        "module": "Coin Telegraph News Update",
+        "user_id": "user_coin_telegraph",
+        "url": "Cron Function",
+        "type": "Entry"
+      }, "Entered the function")
       var options = {
         url: 'http://cointelegraph.com/rss',
         headers: {
@@ -189,16 +231,33 @@ class CronController extends AppController {
               });
           }
         }
-
+        await logger.info({
+          "module": "Bitcoinist News Update",
+          "user_id": "user_coin_telegraph",
+          "url": "Cron Function",
+          "type": "Success"
+        }, "Data Updated Successfully")
         return ("Done");
       })
     } catch (error) {
       console.log(error)
+      await logger.error({
+        "module": "Coin Telegraph News Update",
+        "user_id": "user_coin_telegraph",
+        "url": "Cron Function",
+        "type": "Error"
+      }, error)
     }
   }
 
   // Email Send To User
   async email(slug, user) {
+    await logger.info({
+      "module": "Cron Email to Users",
+      "user_id": "user_email",
+      "url": "Cron Function",
+      "type": "Enter"
+    }, "Entered the function")
     let emailData = await EmailTemplateModel
       .query()
       .first()
@@ -229,10 +288,21 @@ class CronController extends AppController {
       subject: "Threshold Notification"
     }
     await CronSendEmail(allData);
-
+    await logger.info({
+      "module": "Cron Email to users",
+      "user_id": "user_email",
+      "url": "Cron Function",
+      "type": "Success"
+    }, "Data Updated Successfully")
   }
 
   async getDecryptData(keyValue) {
+    await logger.info({
+      "module": "Decryting the Data",
+      "user_id": "user_decrypt",
+      "url": "Cron Function",
+      "type": "Enter"
+    }, "Entering the function")
     var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
     var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
 
@@ -255,12 +325,23 @@ class CronController extends AppController {
       .utils
       .utf8
       .fromBytes(decryptedBytes);
-
+    await logger.info({
+      "module": "Decryting the Data",
+      "user_id": "user_decrypt",
+      "url": "Cron Function",
+      "type": "Success"
+    }, "Data retrieved successfully")
     return decryptedText
   }
 
   async text(slug, user) {
     try {
+      await logger.info({
+        "module": "User Text Sending",
+        "user_id": "user_decrypt",
+        "url": "Cron Function",
+        "type": "Enter"
+      }, "Entering the function")
       var account_sid = await module.exports.getDecryptData(process.env.TWILLIO_ACCOUNT_SID);
       var accountSid = account_sid; // Your Account SID from www.twilio.com/console
       var authToken = await module.exports.getDecryptData(process.env.TWILLIO_ACCOUNT_AUTH_TOKEN) // Your Auth Token from www.twilio.com/console
@@ -283,19 +364,43 @@ class CronController extends AppController {
         to: inputs.user.phone_number, // Text this number
         from: fromNumber // From a valid Twilio number
       }).then((message) => {
+        await logger.info({
+          "module": "User Text Sending",
+          "user_id": "user_text",
+          "url": "Cron Function",
+          "type": "Success"
+        }, "SMS sent successfully")
         return (1);
       })
         .catch((err) => {
           console.log("ERROR >>>>>>>>>>>", err)
+          await logger.error({
+            "module": "User Text Sending",
+            "user_id": "user_text",
+            "url": "Cron Function",
+            "type": "Error in Twilio"
+          }, err)
         })
     } catch (error) {
       console.log(error)
+      await logger.info({
+        "module": "User Text Sending",
+        "user_id": "user_text",
+        "url": "Cron Function",
+        "type": "Error"
+      }, error)
     }
   }
 
   // User Threshold Notification
   async checkTheresoldNotification() {
     try {
+      await logger.info({
+        "module": "Admin Threshold Notification",
+        "user_id": "admin_threshold",
+        "url": "Cron Function",
+        "type": "Enter"
+      }, "Entering the threshold function")
       // //Getting User Notification Details
       let user = await ThresholdModel
         .query()
@@ -371,14 +476,32 @@ class CronController extends AppController {
         }
       }
 
+      await logger.info({
+        "module": "Admin Threshold Notifcation",
+        "user_id": "admin_threshold",
+        "url": "Cron Function",
+        "type": "Success"
+      }, "Threshold Notification send successfully")
       return (1)
     } catch (error) {
       console.log(error)
+      await logger.error({
+        "module": "Admin Threshold Notifcation",
+        "user_id": "admin_threshold",
+        "url": "Cron Function",
+        "type": "Error"
+      }, error)
     }
   }
 
   async deleteEvent(event_id) {
     try {
+      await logger.info({
+        "module": "Simplex Delete Event Data",
+        "user_id": "user_simplex_delete_event_data",
+        "url": "Cron Function",
+        "type": "Enter"
+      }, "Entering the function")
       var keyValue = process.env.ACCESS_TOKEN
 
       var decryptedText = await module
@@ -396,16 +519,33 @@ class CronController extends AppController {
             return (res.body)
           });
       })
+      await logger.info({
+        "module": "Simplex Delete Event Data",
+        "user_id": "user_simplex_delete_event_data",
+        "url": "Cron Function",
+        "type": "Success"
+      }, "Event Deleted Successfully")
       return promise;
 
     } catch (err) {
       console.log(err);
-      await logger.error(err.message)
+      await logger.error({
+        "module": "Simplex Delete Event Data",
+        "user_id": "user_simplex_delete_event_data",
+        "url": "Cron Function",
+        "type": "Error"
+      }, error)
     }
   }
 
   async getEventData() {
     try {
+      await logger.info({
+        "module": "Simplex Event Data",
+        "user_id": "user_simplex_get_event_data",
+        "url": "Cron Function",
+        "type": "Enter"
+      }, "Entering the function")
       var keyValue = process.env.SIMPLEX_ACCESS_TOKEN
 
       var decryptedText = await module
@@ -429,15 +569,33 @@ class CronController extends AppController {
           });
       })
 
+      await logger.info({
+        "module": "Simplex Event Data",
+        "user_id": "user_simplex_get_event_data",
+        "url": "Cron Function",
+        "type": "Success"
+      }, "Event Data retrieved successfully")
       return promise;
 
     } catch (error) {
-      // console.log(error);
+      console.log(error);
+      await logger.error({
+        "module": "Simplex Event Data",
+        "user_id": "user_simplex_get_event_data",
+        "url": "Cron Function",
+        "type": "Error"
+      }, error)
     }
   }
 
   async getReferredData(trade_object, user_id, transaction_id) {
     try {
+      await logger.info({
+        "module": "Simplex Add Referral Data",
+        "user_id": "user_referral",
+        "url": "Cron Function",
+        "type": "Enter"
+      }, "Entering the function")
       var referral_percentage = 0;
       var collectedAmount = 0;
       var collectCoin;
@@ -539,14 +697,32 @@ class CronController extends AppController {
           }
         }
       }
+      await logger.info({
+        "module": "Simplex Add Referral Data",
+        "user_id": "user_referral",
+        "url": "Cron Function",
+        "type": "Success"
+      }, "Referral Data added successfully")
       return (1)
     } catch (error) {
       console.log(error);
+      await logger.error({
+        "module": "Simplex Add Referral Data",
+        "user_id": "user_referral",
+        "url": "Cron Function",
+        "type": "Enter"
+      }, error)
     }
   }
 
   async checkPaymentStatus() {
     try {
+      await logger.info({
+        "module": "Simplex Payment Status Update",
+        "user_id": "user_simplex",
+        "url": "Cron Function",
+        "type": "Enter"
+      }, "Entering the function")
       var data = await module
         .exports
         .getEventData();
@@ -674,14 +850,31 @@ class CronController extends AppController {
           }
         }
       }
+      await logger.info({
+        "module": "Simplex Payment Status Update",
+        "user_id": "user_simplex",
+        "url": "Cron Function",
+        "type": "Success"
+      }, "Simplex Payment status updated Successfully")
     } catch (err) {
       console.log(err);
-      await logger.error(err.message)
+      await logger.error({
+        "module": "Simplex Payment Status Update",
+        "user_id": "user_simplex",
+        "url": "Cron Function",
+        "type": "Error"
+      }, err)
     }
   }
 
   async getMarketPrice(symbol) {
     try {
+      await logger.info({
+        "module": "JST Market Data",
+        "user_id": "user_jst",
+        "url": "Cron Function",
+        "type": "Enter"
+      }, "Entering the function")
       request({
         url: process.env.JST_MARKET_URL + '/Market/GetQuote?symbol=' + symbol,
         method: "POST",
@@ -709,14 +902,32 @@ class CronController extends AppController {
           .insert(object_data);
         //ends
 
+        await logger.info({
+          "module": "JST Market Data",
+          "user_id": "user_jst",
+          "url": "Cron Function",
+          "type": "Success"
+        }, "JST added successfully")
         return (body);
       });
     } catch (error) {
       console.log(error);
+      await logger.error({
+        "module": "JST Market Data",
+        "user_id": "user_jst",
+        "url": "Cron Function",
+        "type": "Error"
+      }, error)
     }
   }
 
   async kycpicUpload(params) {
+    await logger.info({
+      "module": "Customer ID Verification",
+      "user_id": "user_kyc",
+      "url": "Cron Function",
+      "type": "Enter"
+    }, "Entering the function")
     let kyc_details = await KYCModel
       .query()
       .first()
@@ -817,9 +1028,20 @@ class CronController extends AppController {
             } else { }
           })
         }
-
+        await logger.info({
+          "module": "Customer ID Verification",
+          "user_id": "user_kyc",
+          "url": "Cron Function",
+          "type": "Success"
+        }, "User Data Updated Successfully")
       } catch (error) {
         console.log('error', error);
+        await logger.error({
+          "module": "Customer ID Verification",
+          "user_id": "user_kyc",
+          "url": "Cron Function",
+          "type": "Error"
+        }, error)
         await KYCModel
           .query()
           .where('id', kyc_details.id)
@@ -835,6 +1057,12 @@ class CronController extends AppController {
 
   async kyccron() {
     try {
+      await logger.info({
+        "module": "User Customer ID Verification",
+        "user_id": "user_kyc",
+        "url": "Cron Function",
+        "type": "Enter"
+      }, "Entering the function")
       let pendingKYC = await KYCModel
         .query()
         .where('deleted_at', null)
@@ -847,10 +1075,22 @@ class CronController extends AppController {
       }
     } catch (error) {
       console.log(error);
+      await logger.error({
+        "module": "User Customer ID Verification",
+        "user_id": "user_kyc",
+        "url": "Cron Function",
+        "type": "Error"
+      }, error)
     }
   }
 
   async addPriceFromCoinmarketData() {
+    await logger.info({
+      "module": "Cron CoinMarketCap",
+      "user_id": "user_marketcap",
+      "url": "Cron Function",
+      "type": "Enter"
+    }, "Entering the function")
     var keyValue = await module.exports.getDecryptData(process.env.COINMARKETCAP_MARKETPRICE)
     await request({
       url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20',
@@ -877,9 +1117,20 @@ class CronController extends AppController {
             .query()
             .insert(price_object);
         }
-
+        await logger.info({
+          "module": "Cron CoinMarket Cap",
+          "user_id": "user_marketcap",
+          "url": "Cron Function",
+          "type": "Success"
+        }, "CoinMarketCap Updated successfully")
       } catch (error) {
         console.log('error', error);
+        await logger.error({
+          "module": "Cron CoinMarket Cap",
+          "user_id": "user_marketcap",
+          "url": "Cron Function",
+          "type": "Error"
+        }, error)
       }
     })
   }
