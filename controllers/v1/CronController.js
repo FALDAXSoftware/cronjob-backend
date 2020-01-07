@@ -742,10 +742,11 @@ class CronController extends AppController {
         for (var j = 0; j < data.events.length; j++) {
           var payment_data = JSON.stringify(data.events[j].payment);
           payment_data = JSON.parse(payment_data);
-          if (payment_data.id == tradeData[i].payment_id && payment_data.status == "pending_simplexcc_payment_to_partner") {
+          var payment_status = data.events[j]
+          if (payment_data.id == tradeData[i].payment_id && payment_status.name == "payment_request_submitted") {
             await module.exports.deleteEvent(data.events[j].event_id)
           } else if (payment_data.id == tradeData[i].payment_id) {
-            if (payment_data.status == "pending_simplexcc_approval") {
+            if (payment_status.name == "payment_simplexcc_approved") {
               var tradeHistoryData = await SimplexTradeHistoryModel
                 .query()
                 .select()
@@ -768,7 +769,7 @@ class CronController extends AppController {
               if (referData != undefined) {
                 let referredData = await module.exports.getReferredData(tradeHistoryData, tradeHistoryData.user_id, tradeData[i].id);
               }
-            } else if (payment_data.status == "cancelled" || payment_data.status == "simplexcc_declined") {
+            } else if (payment_status.name == "payment_simplexcc_declined") {
               var tradeHistoryData = await SimplexTradeHistoryModel
                 .query()
                 .select()
