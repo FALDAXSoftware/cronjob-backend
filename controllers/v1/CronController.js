@@ -303,10 +303,10 @@ class CronController extends AppController {
       "url": "Cron Function",
       "type": "Enter"
     }, "Entering the function")
-    var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
-    var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
-    // var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-    // var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
+    // var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
+    // var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
+    var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
 
     // When ready to decrypt the hex string, convert it back to bytes
     var encryptedBytes = aesjs
@@ -1069,6 +1069,162 @@ class CronController extends AppController {
     })
   }
 
+  // Send the Amount
+  async send(address, amount, feeRate, coin, walletId) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        var access_token_value = await this.getDecryptData(process.env.BITGO_ACCESS_TOKEN);
+        var passphrase_value = await this.getDecryptData(process.env.BITGO_PASSPHRASE);
+        var send_data = {
+          address: address,
+          amount: parseFloat(amount),
+          walletPassphrase: passphrase_value,
+          feeRate: feeRate
+        };
+
+        request({
+          url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}/sendcoins`,
+          method: "POST",
+          headers: {
+            'cache-control': 'no-cache',
+            Authorization: `Bearer ${access_token_value}`,
+            'Content-Type': 'application/json'
+          },
+          body: send_data,
+          json: true
+        }, function (err, httpResponse, body) {
+          if (err) {
+            console.log("Error", err)
+            reject(err);
+          }
+          console.log("Res Body", body);
+          if (body.error) {
+            reject(body);
+          }
+          resolve(body);
+        });
+      } catch (error) {
+        console.log(error)
+        reject(error);
+      }
+    })
+  }
+
+  // Get Wallet Data Value
+  async getWalletData(walletId, coin) {
+    return new Promise(async (resolve, reject) => {
+      var access_token_value = await this.getDecryptData(process.env.BITGO_ACCESS_TOKEN);
+
+      await request({
+        url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}`,
+        method: "GET",
+        headers: {
+          'cache-control': 'no-cache',
+          Authorization: `Bearer ${access_token_value}`,
+          'Content-Type': 'application/json'
+        },
+        json: true
+      }, function (err, httpResponse, body) {
+        console.log("wallet", err);
+        if (err) {
+          resolve(err);
+        }
+        if (body.error) {
+          resolve(body);
+        }
+        resolve(body);
+      });
+    })
+  }
+
+  // Send Left Over Residual Amount to Warm Wallet
+  async sendResidualSendFunds() {
+    var coinData = await Coins
+      .query()
+      .select('hot_send_wallet_address', 'coin_code')
+      .where('deleted_at', null)
+      .andWhere('is_active', true)
+      .orderBy('id', 'DESC');
+
+    if (coinData && coinData != undefined && coinData.length > 0) {
+      for (var i = 0; i < coinData.length; i++) {
+        if (coinData[i].hot_send_wallet_address != null) {
+          var data = await module.exports.getWalletData(coinData[i].hot_send_wallet_address, coinData[i].coin_code)
+          var warmWalletData = await module.exports.getWalletData(coinData[i].warm_wallet_address, coinData[i].coin_code);
+          var thresholdValue;
+          var feesValue;
+          if (coinData[i].coin_code == 'tbtc') {
+            thresholdValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'tbtc_limit_wallet_transfer')
+              .orderBy('id', 'DESC');
+            feesValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'tbtc_static_fees')
+              .orderBy('id', 'DESC');
+          } else if (coinData[i].coin_code == 'teth') {
+            thresholdValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'teth_limit_wallet_transfer')
+              .orderBy('id', 'DESC');
+            feesValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'teth_static_fees')
+              .orderBy('id', 'DESC');
+          } else if (coinData[i].coin_code == 'txrp') {
+            thresholdValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'txrp_limit_wallet_transfer')
+              .orderBy('id', 'DESC');
+            feesValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'txrp_static_fees')
+              .orderBy('id', 'DESC');
+          } else if (coinData[i].coin_code == 'tltc') {
+            thresholdValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'tltc_limit_wallet_transfer')
+              .orderBy('id', 'DESC');
+            feesValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'tltc_static_fees')
+              .orderBy('id', 'DESC');
+          }
+          thresholdValue = thresholdValue.value;
+          feesValue = feesValue.value;
+          if (data.balance && data.balance != undefined) {
+            if ((parseFloat(data.balance) + parseFloat(feesValue)) >= thresholdValue) {
+              // var sendTransaction = await module.exports.send(warmWalletData.address)
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 module.exports = new CronController();
