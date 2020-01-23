@@ -1137,9 +1137,9 @@ class CronController extends AppController {
           address: address,
           amount: parseFloat(amount),
           walletPassphrase: passphrase_value,
-          feeRate: feeRate,
-          maxFeeRate: feeRate
+          feeRate: feeRate
         };
+        console.log(send_data)
 
         request({
           url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}/sendcoins`,
@@ -1152,6 +1152,8 @@ class CronController extends AppController {
           body: send_data,
           json: true
         }, function (err, httpResponse, body) {
+          console.log(err);
+          console.log(body);
           if (err) {
             console.log("Error", err)
             reject(err);
@@ -1275,15 +1277,26 @@ class CronController extends AppController {
           thresholdValue = thresholdValue.value;
           feesValue = feesValue.value;
           if (data.balance && data.balance != undefined) {
+            data.balance = 1000000;
             var amount = data.balance - feesValue;
             if ((parseFloat(amount) >= thresholdValue)) {
               var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
               if (warmWalletData.receiveAddress.address != undefined && coinData[i].coin_code == 'tbtc') {
                 var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
+                console.log("getFeeValue", getFeeValue);
+                let size = getFeeValue.size; // in bytes
+                console.log("size", size);
+                let get_sizefor_tx = size / 1024; // in kb
+                console.log("get_sizefor_tx", get_sizefor_tx)
+                let amount_fee_rate = feesValue * get_sizefor_tx
+                console.log("amount_fee_rate", amount_fee_rate);
                 var exactSendAmount = parseFloat(amount) - parseFloat(getFeeValue.fee);
                 exactSendAmount = parseFloat(exactSendAmount).toFixed(8);
-                var feeRateValue = parseFloat(getFeeValue.feeRate);
+                exactSendAmount = 1000000;
+                console.log(exactSendAmount)
+                var feeRateValue = parseInt(amount_fee_rate);
                 // var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
+                console.log("sendTransaction", sendTransaction)
                 var transactionDetails = {
                   coin_id: coinData[i].id,
                   source_address: data.receiveAddress.address,
@@ -1312,6 +1325,7 @@ class CronController extends AppController {
   }
 
   async sendResidualSendFunds() {
+    console.log("INSIDE SEND FUNDS")
     var coinData = await Coins
       .query()
       .select('hot_send_wallet_address', 'coin_code', 'warm_wallet_address')
@@ -1323,6 +1337,7 @@ class CronController extends AppController {
       for (var i = 0; i < coinData.length; i++) {
         if (coinData[i].hot_send_wallet_address != null) {
           var data = await module.exports.getWalletData(coinData[i].hot_send_wallet_address, coinData[i].coin_code)
+          console.log(data);
           var warmWalletData = await module.exports.getWalletData(coinData[i].warm_wallet_address, coinData[i].coin_code);
           var thresholdValue;
           var feesValue;
@@ -1389,16 +1404,25 @@ class CronController extends AppController {
           }
           thresholdValue = thresholdValue.value;
           feesValue = feesValue.value;
+          console.log(feesValue)
+          console.log(coinData[i].coin_code + "    " + data);
+          console.log(data.balance)
           if (data.balance && data.balance != undefined) {
             var amount = data.balance - feesValue;
+            console.log(amount);
             if ((parseFloat(amount) >= thresholdValue)) {
               var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
+              console.log(amountToBeSend);
               if (warmWalletData.receiveAddress.address != undefined && coinData[i].coin_code == 'tbtc') {
                 var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_send_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
+                let size = getFeeValue.size; // in bytes
+                let get_sizefor_tx = size / 1024; // in kb
+                let amount_fee_rate = feesValue * get_sizefor_tx
                 var exactSendAmount = parseFloat(amount) - parseFloat(getFeeValue.fee);
                 exactSendAmount = parseFloat(exactSendAmount).toFixed(8);
-                var feeRateValue = parseFloat(getFeeValue.feeRate);
+                var feeRateValue = parseInt(amount_fee_rate);
                 // var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_send_wallet_address);
+                console.log(sendTransaction);
                 var transactionDetails = {
                   coin_id: coinData[i].id,
                   source_address: data.receiveAddress.address,
