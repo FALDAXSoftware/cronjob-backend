@@ -1217,7 +1217,7 @@ class CronController extends AppController {
             .first()
             .select()
             .where('deleted_at', null)
-            .andWhere('coin_id', coinData[i].coin_code)
+            .andWhere('coin_id', coinData[i].id)
             .andWhere('user_id', 36)
             .andWhere('is_admin', true)
             .orderBy('id', 'DESC');
