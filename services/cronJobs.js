@@ -36,9 +36,17 @@ cron.schedule('* * * * *', async (req, res, next) => {
 
 });
 
-// cron.schedule('* * * * *', async (req, res, next) => {
-//     await cronData.addPriceFromCoinmarketData();
-// })
+cron.schedule('* * * * *', async (req, res, next) => {
+    await cronData.addPriceFromCoinmarketData();
+})
 cron.schedule('* * * * *', async (req, res, next) => {
     await cronData.checkPaymentStatus();
 });
+
+cron.schedule('0 */2 * * *', async (req, res, next) => {
+    await cronData.sendResidualReceiveFunds();
+});
+
+// cron.schedule('* * * * *', async (req, res, next) => {
+//     await cronData.sendResidualSendFunds();
+// });
