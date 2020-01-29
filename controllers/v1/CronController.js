@@ -1306,7 +1306,7 @@ class CronController extends AppController {
                 exactSendAmount = parseFloat(exactSendAmount).toFixed(8);
                 console.log(exactSendAmount)
                 var feeRateValue = parseInt(amount_fee_rate);
-                // var sendTransaction = await module.exports.send(adminAddress.receive_address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
+                var sendTransaction = await module.exports.send(adminAddress.receive_address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
                 console.log("sendTransaction", sendTransaction)
                 var transactionDetails = {
                   coin_id: coinData[i].id,
