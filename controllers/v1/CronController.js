@@ -1201,7 +1201,7 @@ class CronController extends AppController {
   async sendResidualReceiveFunds() {
     var coinData = await Coins
       .query()
-      .select('hot_receive_wallet_address', 'coin_code', 'warm_wallet_address')
+      .select('hot_receive_wallet_address', 'coin_code', 'warm_wallet_address', 'id')
       .where('deleted_at', null)
       .andWhere('is_active', true)
       .orderBy('id', 'DESC');
@@ -1221,6 +1221,8 @@ class CronController extends AppController {
             .andWhere('user_id', 36)
             .andWhere('is_admin', true)
             .orderBy('id', 'DESC');
+
+          console.log("adminAddress", adminAddress)
 
           var thresholdValue;
           var feesValue;
@@ -1338,7 +1340,7 @@ class CronController extends AppController {
     console.log("INSIDE SEND FUNDS")
     var coinData = await Coins
       .query()
-      .select('hot_send_wallet_address', 'coin_code', 'warm_wallet_address')
+      .select('hot_send_wallet_address', 'coin_code', 'warm_wallet_address', 'id')
       .where('deleted_at', null)
       .andWhere('is_active', true)
       .orderBy('id', 'DESC');
@@ -1354,7 +1356,7 @@ class CronController extends AppController {
             .first()
             .select()
             .where('deleted_at', null)
-            .andWhere('coin_id', coinData[i].coin_code)
+            .andWhere('coin_id', coinData[i].id)
             .andWhere('user_id', 36)
             .andWhere('is_admin', true)
             .orderBy('id', 'DESC');
