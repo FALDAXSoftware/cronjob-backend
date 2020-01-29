@@ -1211,6 +1211,17 @@ class CronController extends AppController {
         if (coinData[i].hot_receive_wallet_address != null) {
           var data = await module.exports.getWalletData(coinData[i].hot_receive_wallet_address, coinData[i].coin_code)
           var warmWalletData = await module.exports.getWalletData(coinData[i].warm_wallet_address, coinData[i].coin_code);
+
+          var adminAddress = await Wallet
+            .query()
+            .first()
+            .select()
+            .where('deleted_at', null)
+            .andWhere('coin_id', coinData[i].coin_code)
+            .andWhere('user_id', 36)
+            .andWhere('is_admin', true)
+            .orderBy('id', 'DESC');
+
           var thresholdValue;
           var feesValue;
           if (coinData[i].coin_code == 'tbtc') {
@@ -1277,12 +1288,11 @@ class CronController extends AppController {
           thresholdValue = thresholdValue.value;
           feesValue = feesValue.value;
           if (data.balance && data.balance != undefined) {
-            data.balance = 1000000;
             var amount = data.balance - feesValue;
             if ((parseFloat(amount) >= thresholdValue)) {
               var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
               if (warmWalletData.receiveAddress.address != undefined && coinData[i].coin_code == 'tbtc') {
-                var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
+                var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), adminAddress.receive_address);
                 console.log("getFeeValue", getFeeValue);
                 let size = getFeeValue.size; // in bytes
                 console.log("size", size);
@@ -1292,10 +1302,9 @@ class CronController extends AppController {
                 console.log("amount_fee_rate", amount_fee_rate);
                 var exactSendAmount = parseFloat(amount) - parseFloat(getFeeValue.fee);
                 exactSendAmount = parseFloat(exactSendAmount).toFixed(8);
-                exactSendAmount = 1000000;
                 console.log(exactSendAmount)
                 var feeRateValue = parseInt(amount_fee_rate);
-                // var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
+                // var sendTransaction = await module.exports.send(adminAddress.receive_address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
                 console.log("sendTransaction", sendTransaction)
                 var transactionDetails = {
                   coin_id: coinData[i].id,
@@ -1311,7 +1320,8 @@ class CronController extends AppController {
                   estimated_network_fees: parseFloat(getFeeValue.fee / 1e8).toFixed(8),
                   is_done: true,
                   actual_amount: parseFloat(exactSendAmount / 1e8).toFixed(8),
-                  is_admin: true
+                  is_admin: true,
+                  residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8)
                 }
                 await TransactionTableModel
                   .query()
@@ -1339,6 +1349,16 @@ class CronController extends AppController {
           var data = await module.exports.getWalletData(coinData[i].hot_send_wallet_address, coinData[i].coin_code)
           console.log(data);
           var warmWalletData = await module.exports.getWalletData(coinData[i].warm_wallet_address, coinData[i].coin_code);
+          var adminAddress = await Wallet
+            .query()
+            .first()
+            .select()
+            .where('deleted_at', null)
+            .andWhere('coin_id', coinData[i].coin_code)
+            .andWhere('user_id', 36)
+            .andWhere('is_admin', true)
+            .orderBy('id', 'DESC');
+
           var thresholdValue;
           var feesValue;
           if (coinData[i].coin_code == 'tbtc') {
@@ -1413,20 +1433,20 @@ class CronController extends AppController {
             if ((parseFloat(amount) >= thresholdValue)) {
               var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
               console.log(amountToBeSend);
-              if (warmWalletData.receiveAddress.address != undefined && coinData[i].coin_code == 'tbtc') {
-                var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_send_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
+              if (warmWalletData.receiveAddress.address != undefined && adminAddress.receive_address != undefined) {
+                var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_send_wallet_address, parseFloat(amountToBeSend), adminAddress.receive_address);
                 let size = getFeeValue.size; // in bytes
                 let get_sizefor_tx = size / 1024; // in kb
                 let amount_fee_rate = feesValue * get_sizefor_tx
                 var exactSendAmount = parseFloat(amount) - parseFloat(getFeeValue.fee);
                 exactSendAmount = parseFloat(exactSendAmount).toFixed(8);
                 var feeRateValue = parseInt(amount_fee_rate);
-                // var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_send_wallet_address);
-                console.log(sendTransaction);
+                // var sendTransaction = await module.exports.send(adminAddress.receive_address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_send_wallet_address);
+                // console.log(sendTransaction);
                 var transactionDetails = {
                   coin_id: coinData[i].id,
                   source_address: data.receiveAddress.address,
-                  destination_address: warmWalletData.receiveAddress.address,
+                  destination_address: adminAddress.receive_address,
                   user_id: 36,
                   amount: parseFloat(exactSendAmount / 1e8).toFixed(8),
                   transaction_type: 'send',
@@ -1437,7 +1457,8 @@ class CronController extends AppController {
                   estimated_network_fees: parseFloat(getFeeValue.fee / 1e8).toFixed(8),
                   is_done: true,
                   actual_amount: parseFloat(exactSendAmount / 1e8).toFixed(8),
-                  is_admin: true
+                  is_admin: true,
+                  residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8)
                 }
                 await TransactionTableModel
                   .query()
