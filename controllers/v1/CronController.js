@@ -1326,7 +1326,7 @@ class CronController extends AppController {
                   actual_amount: parseFloat(amount / 1e8).toFixed(8),
                   is_admin: true,
                   residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8),
-                  transaction_from:"Receive to Warmwallet"
+                  transaction_from:"Residual Receive to Warmwallet"
                 }
                 console.log(transactionDetails)
                 var value;
@@ -1483,7 +1483,7 @@ class CronController extends AppController {
                   actual_amount: parseFloat(exactSendAmount / 1e8).toFixed(8),
                   is_admin: true,
                   residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8),
-                  transaction_from:"Send to Warmwallet"
+                  transaction_from:"Residual Send to Warmwallet"
                 }
                 await residualTransactionModel
                   .query()
