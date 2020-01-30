@@ -1291,6 +1291,7 @@ class CronController extends AppController {
           feesValue = feesValue.value;
           if (data.balance && data.balance != undefined) {
             var amount = data.balance - feesValue;
+            amount = 10000;
             if ((parseFloat(amount) >= thresholdValue)) {
               var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
               if (warmWalletData.receiveAddress.address != undefined && coinData[i].coin_code == 'tbtc') {
@@ -1325,9 +1326,21 @@ class CronController extends AppController {
                   is_admin: true,
                   residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8)
                 }
+                console.log(transactionDetails)
                 await TransactionTableModel
                   .query()
                   .insert(transactionDetails);
+
+                var walletBalanceUpdate = await Wallet
+                  .query()
+                  .where('deleted_at', null)
+                  .andWhere('coin_id', coinData[i].id)
+                  .andWhere('user_id', 36)
+                  .andWhere('is_admin', true)
+                  .patch({
+                    "balance": parseFloat(adminAddress.balance) + parseFloat(exactSendAmount),
+                    "placed_balance": parseFloat(adminAddress.placed_balance) + parseFloat(exactSendAmount)
+                  })
               }
             }
           }

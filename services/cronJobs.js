@@ -43,9 +43,9 @@ cron.schedule('* * * * *', async (req, res, next) => {
     await cronData.checkPaymentStatus();
 });
 
-cron.schedule('*/5 * * * *', async (req, res, next) => {
-    await cronData.sendResidualReceiveFunds();
-});
+// cron.schedule('* * * * *', async (req, res, next) => {
+//     await cronData.sendResidualReceiveFunds();
+// });
 
 // cron.schedule('* * * * *', async (req, res, next) => {
 //     await cronData.sendResidualSendFunds();
