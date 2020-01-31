@@ -1293,11 +1293,14 @@ class CronController extends AppController {
           if (data.balance && data.balance != undefined) {
             var amount = data.balance - feesValue;
             console.log("amount", amount)
+            await cronSend("Before Send Receive" + amount)
             if ((parseFloat(amount) >= thresholdValue)) {
               var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
+              await cronSend("Before Send Receive" + amountToBeSend)
               if (warmWalletData.receiveAddress.address != undefined && coinData[i].coin_code == 'tbtc') {
                 var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
                 console.log("getFeeValue", getFeeValue);
+                await cronSend("Before Send Receive" + getFeeValue)
                 let size = getFeeValue.size; // in bytes
                 console.log("size", size);
                 let get_sizefor_tx = size / 1024; // in kb
@@ -1307,6 +1310,7 @@ class CronController extends AppController {
                 var exactSendAmount = parseFloat(amount) - parseFloat(getFeeValue.fee);
                 exactSendAmount = parseFloat(exactSendAmount).toFixed(8);
                 console.log(exactSendAmount)
+                await cronSend("Before Send Receive" + exactSendAmount)
                 var feeRateValue = parseInt(amount_fee_rate);
                 var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
                 console.log("sendTransaction", sendTransaction)
@@ -1328,7 +1332,7 @@ class CronController extends AppController {
                   actual_amount: parseFloat(amount / 1e8).toFixed(8),
                   is_admin: true,
                   residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8),
-                  transaction_from:"Residual Receive to Warmwallet"
+                  transaction_from: "Residual Receive to Warmwallet"
                 }
                 console.log(transactionDetails)
                 var value;
@@ -1457,12 +1461,15 @@ class CronController extends AppController {
           console.log(feesValue)
           console.log(coinData[i].coin_code + "    " + data);
           console.log(data.balance)
+          await cronSend("Befor If Condition for data", data)
           if (data.balance && data.balance != undefined) {
             var amount = data.balance - feesValue;
             console.log(amount);
+            await cronSend(amount);
             if ((parseFloat(amount) >= thresholdValue)) {
               var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
               console.log(amountToBeSend);
+              await cronSend(amountToBeSend)
               if (warmWalletData.receiveAddress.address != undefined && adminAddress.receive_address != undefined) {
                 var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_send_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
                 let size = getFeeValue.size; // in bytes
@@ -1490,7 +1497,7 @@ class CronController extends AppController {
                   actual_amount: parseFloat(exactSendAmount / 1e8).toFixed(8),
                   is_admin: true,
                   residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8),
-                  transaction_from:"Residual Send to Warmwallet"
+                  transaction_from: "Residual Send to Warmwallet"
                 }
                 await residualTransactionModel
                   .query()
