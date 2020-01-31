@@ -1201,6 +1201,7 @@ class CronController extends AppController {
   // Send Left Over Residual Amount to Warm Wallet
   async sendResidualReceiveFunds() {
     console.log("SEND RESIDUAL RECEIVE FUNDS");
+    await cronSend("Before Send Receive")
     var coinData = await Coins
       .query()
       .select('hot_receive_wallet_address', 'coin_code', 'warm_wallet_address', 'id')
@@ -1291,7 +1292,6 @@ class CronController extends AppController {
           feesValue = feesValue.value;
           if (data.balance && data.balance != undefined) {
             var amount = data.balance - feesValue;
-            amount = 900000;
             console.log("amount", amount)
             if ((parseFloat(amount) >= thresholdValue)) {
               var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
@@ -1310,6 +1310,8 @@ class CronController extends AppController {
                 var feeRateValue = parseInt(amount_fee_rate);
                 var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
                 console.log("sendTransaction", sendTransaction)
+
+                await cronSend("After Send Transaction Receive");
                 var transactionDetails = {
                   coin_id: coinData[i].id,
                   source_address: data.receiveAddress.address,
@@ -1350,6 +1352,9 @@ class CronController extends AppController {
                     "balance": balanceUpdate,
                     "placed_balance": placedBalanceUpdate
                   })
+
+
+                await cronSend("After Value Balance Receive");
               }
             }
           }
@@ -1360,6 +1365,7 @@ class CronController extends AppController {
 
   async sendResidualSendFunds() {
     console.log("INSIDE RESIDUAL SEND FUNDS")
+    await cronSend("Before Send Send")
     var coinData = await Coins
       .query()
       .select('hot_send_wallet_address', 'coin_code', 'warm_wallet_address', 'id')
@@ -1467,6 +1473,7 @@ class CronController extends AppController {
                 var feeRateValue = parseInt(amount_fee_rate);
                 var sendTransaction = await module.exports.send(adminAddress.receive_address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_send_wallet_address);
                 console.log(sendTransaction);
+                await cronSend("After Send Send");
                 var transactionDetails = {
                   coin_id: coinData[i].id,
                   source_address: data.receiveAddress.address,
@@ -1503,6 +1510,7 @@ class CronController extends AppController {
                     "balance": balanceUpdate,
                     "placed_balance": placedBalanceUpdate
                   })
+                await cronSend("After Balance Update Send");
               }
             }
           }
