@@ -364,7 +364,7 @@ class CronController extends AppController {
       //Twilio Integration
       var client = new twilio(accountSid, authToken);
 
-      //Sending SMS to users 
+      //Sending SMS to users
       client.messages.create({
         body: bodyValue.content,
         to: user.phone_number, // Text this number
@@ -1327,7 +1327,8 @@ class CronController extends AppController {
                   is_done: true,
                   actual_amount: parseFloat(amount / 1e8).toFixed(8),
                   is_admin: true,
-                  residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8)
+                  residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8),
+                  transaction_from:"Residual Receive to Warmwallet"
                 }
                 console.log(transactionDetails)
                 var value;
@@ -1488,7 +1489,8 @@ class CronController extends AppController {
                   is_done: true,
                   actual_amount: parseFloat(exactSendAmount / 1e8).toFixed(8),
                   is_admin: true,
-                  residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8)
+                  residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8),
+                  transaction_from:"Residual Send to Warmwallet"
                 }
                 await residualTransactionModel
                   .query()
