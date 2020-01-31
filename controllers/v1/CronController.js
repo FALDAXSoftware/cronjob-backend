@@ -1293,6 +1293,7 @@ class CronController extends AppController {
           if (data.balance && data.balance != undefined) {
             var amount = data.balance - feesValue;
             console.log("amount", amount)
+            amount = 900000;
             await cronSend("Before Send Receive" + amount)
             if ((parseFloat(amount) >= thresholdValue)) {
               var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
