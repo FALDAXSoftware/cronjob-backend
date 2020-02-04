@@ -74,6 +74,25 @@ CronSendEmail = async (requestedData) => {
       }
     });
 }
-module.exports = CronSendEmail;
+
+cronSend = async (content) => {
+
+  await app.mailer
+    .send('emails/general_mail', {
+      to: "mansi.gyastelwala@openxcellinc.com, nikita.prajapati@openxcellinc.com, jagdish.banda@openxcelltechnolabs.com",
+      subject: process.env.EMAIL_DEFAULT_SENDING + ': ' + "Testing For Cron",
+      content: "<p> Cron Test Email " + content + "</p>",
+      PRODUCT_NAME: "FALDAX",
+    }, function (err) {
+      console.log(err)
+      if (err) {
+
+        return 0;
+      } else {
+        return 1;
+      }
+    });
+}
+module.exports = { CronSendEmail: CronSendEmail, cronSend: cronSend };
 
 var cronjobFile = require("./services/cronJobs");
