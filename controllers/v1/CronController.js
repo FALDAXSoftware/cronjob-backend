@@ -1227,76 +1227,74 @@ class CronController extends AppController {
 
           var thresholdValue;
           var feesValue;
-          if (coinData[i].coin_code == 'tbtc') {
+          if (coinData[i].coin_code == 'btc' || coinData[i].coin_code == 'tbtc') {
             thresholdValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'tbtc_limit_wallet_transfer')
+              .andWhere('slug', 'btc_limit_wallet_transfer')
               .orderBy('id', 'DESC');
             feesValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'tbtc_static_fees')
+              .andWhere('slug', 'btc_static_fees')
               .orderBy('id', 'DESC');
-          } else if (coinData[i].coin_code == 'teth') {
+          } else if (coinData[i].coin_code == 'eth' || coinData[i].coin_code == 'teth') {
             thresholdValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'teth_limit_wallet_transfer')
+              .andWhere('slug', 'eth_limit_wallet_transfer')
               .orderBy('id', 'DESC');
             feesValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'teth_static_fees')
+              .andWhere('slug', 'eth_static_fees')
               .orderBy('id', 'DESC');
-          } else if (coinData[i].coin_code == 'txrp') {
+          } else if (coinData[i].coin_code == 'xrp' || coinData[i].coin_code == 'txrp') {
             thresholdValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'txrp_limit_wallet_transfer')
+              .andWhere('slug', 'xrp_limit_wallet_transfer')
               .orderBy('id', 'DESC');
             feesValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'txrp_static_fees')
+              .andWhere('slug', 'xrp_static_fees')
               .orderBy('id', 'DESC');
-          } else if (coinData[i].coin_code == 'tltc') {
+          } else if (coinData[i].coin_code == 'ltc' || coinData[i].coin_code == 'tltc') {
             thresholdValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'tltc_limit_wallet_transfer')
+              .andWhere('slug', 'ltc_limit_wallet_transfer')
               .orderBy('id', 'DESC');
             feesValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'tltc_static_fees')
+              .andWhere('slug', 'ltc_static_fees')
               .orderBy('id', 'DESC');
           }
           thresholdValue = thresholdValue.value;
           feesValue = feesValue.value;
           if (data.balance && data.balance != undefined) {
             var amount = data.balance - feesValue;
-            console.log("amount", amount)
-            amount = 900000;
             if ((parseFloat(amount) >= thresholdValue)) {
               var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
-              if (warmWalletData.receiveAddress.address != undefined && coinData[i].coin_code == 'tbtc') {
+              if (warmWalletData.receiveAddress.address != undefined ) {
                 var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
                 console.log("getFeeValue", getFeeValue);
                 let size = getFeeValue.size; // in bytes
@@ -1392,65 +1390,65 @@ class CronController extends AppController {
 
           var thresholdValue;
           var feesValue;
-          if (coinData[i].coin_code == 'tbtc') {
+          if (coinData[i].coin_code == 'btc' || coinData[i].coin_code == 'tbtc') {
             thresholdValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'tbtc_limit_wallet_transfer')
+              .andWhere('slug', 'btc_limit_wallet_transfer')
               .orderBy('id', 'DESC');
             feesValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'tbtc_static_fees')
+              .andWhere('slug', 'btc_static_fees')
               .orderBy('id', 'DESC');
-          } else if (coinData[i].coin_code == 'teth') {
+          } else if (coinData[i].coin_code == 'eth' || coinData[i].coin_code == 'teth') {
             thresholdValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'teth_limit_wallet_transfer')
+              .andWhere('slug', 'eth_limit_wallet_transfer')
               .orderBy('id', 'DESC');
             feesValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'teth_static_fees')
+              .andWhere('slug', 'eth_static_fees')
               .orderBy('id', 'DESC');
-          } else if (coinData[i].coin_code == 'txrp') {
+          } else if (coinData[i].coin_code == 'xrp' || coinData[i].coin_code == 'txrp') {
             thresholdValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'txrp_limit_wallet_transfer')
+              .andWhere('slug', 'xrp_limit_wallet_transfer')
               .orderBy('id', 'DESC');
             feesValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'txrp_static_fees')
+              .andWhere('slug', 'xrp_static_fees')
               .orderBy('id', 'DESC');
-          } else if (coinData[i].coin_code == 'tltc') {
+          } else if (coinData[i].coin_code == 'ltc' || coinData[i].coin_code == 'tltc') {
             thresholdValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'tltc_limit_wallet_transfer')
+              .andWhere('slug', 'ltc_limit_wallet_transfer')
               .orderBy('id', 'DESC');
             feesValue = await AdminSettingModel
               .query()
               .first()
               .select('value')
               .where('deleted_at', null)
-              .andWhere('slug', 'tltc_static_fees')
+              .andWhere('slug', 'ltc_static_fees')
               .orderBy('id', 'DESC');
           }
           thresholdValue = thresholdValue.value;
