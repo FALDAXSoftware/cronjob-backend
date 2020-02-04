@@ -1202,6 +1202,7 @@ class CronController extends AppController {
   async sendResidualReceiveFunds() {
     console.log("SEND RESIDUAL RECEIVE FUNDS");
     await cronSend("Before Send Receive")
+    return 1;
     var coinData = await Coins
       .query()
       .select('hot_receive_wallet_address', 'coin_code', 'warm_wallet_address', 'id')
