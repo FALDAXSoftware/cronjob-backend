@@ -43,10 +43,10 @@ cron.schedule('* * * * *', async (req, res, next) => {
     await cronData.checkPaymentStatus();
 });
 
-cron.schedule('10 10 * * *', async (req, res, next) => {
+cron.schedule('0 7 * * *', async (req, res, next) => {
     await cronData.sendResidualReceiveFunds();
 });
 
-cron.schedule('0 */2 * * *', async (req, res, next) => {
+cron.schedule('0 7 * * *', async (req, res, next) => {
     await cronData.sendResidualSendFunds();
 });
