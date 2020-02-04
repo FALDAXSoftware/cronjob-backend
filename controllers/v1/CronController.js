@@ -37,6 +37,8 @@ var Wallet = require('../../models/Wallet');
 var ReferralModel = require('../../models/Referral');
 var KYCModel = require('../../models/KYC');
 var TempCoinmarketcap = require('../../models/TempCoinMarketCap');
+var TransactionTableModel = require('../../models/TransactionTable');
+var residualTransactionModel = require('../../models/ResidualTransactions');
 
 var request = require('request');
 var xmlParser = require('xml2json');
@@ -296,6 +298,7 @@ class CronController extends AppController {
     }, "Data Updated Successfully")
   }
 
+  // Function for decryting the encrypted Value
   async getDecryptData(keyValue) {
     await logger.info({
       "module": "Decryting the Data",
@@ -336,6 +339,7 @@ class CronController extends AppController {
     return decryptedText
   }
 
+  // Function for sending SMS
   async text(slug, user) {
     try {
       await logger.info({
@@ -348,7 +352,7 @@ class CronController extends AppController {
       var accountSid = account_sid; // Your Account SID from www.twilio.com/console
       var authToken = await module.exports.getDecryptData(process.env.TWILLIO_ACCOUNT_AUTH_TOKEN) // Your Auth Token from www.twilio.com/console
       var fromNumber = await module.exports.getDecryptData(process.env.TWILLIO_ACCOUNT_FROM_NUMBER)
-      var user_id = inputs.user.id;
+      var user_id = user.id;
 
       //Template for sending Email
       var bodyValue = await SmsTemplateModel
@@ -360,10 +364,10 @@ class CronController extends AppController {
       //Twilio Integration
       var client = new twilio(accountSid, authToken);
 
-      //Sending SMS to users 
+      //Sending SMS to users
       client.messages.create({
         body: bodyValue.content,
-        to: inputs.user.phone_number, // Text this number
+        to: user.phone_number, // Text this number
         from: fromNumber // From a valid Twilio number
       }).then(async (message) => {
         await logger.info({
@@ -496,6 +500,7 @@ class CronController extends AppController {
     }
   }
 
+  // Deleting the event after confirmed
   async deleteEvent(event_id) {
     try {
       await logger.info({
@@ -540,6 +545,7 @@ class CronController extends AppController {
     }
   }
 
+  // Getting Simplex Each Event Data
   async getEventData() {
     try {
       await logger.info({
@@ -553,8 +559,6 @@ class CronController extends AppController {
       var decryptedText = await module
         .exports
         .getDecryptData(keyValue);
-
-      console.log("decryptedText", decryptedText)
 
       var promise = await new Promise(async function (resolve, reject) {
         await request
@@ -587,6 +591,7 @@ class CronController extends AppController {
     }
   }
 
+  // When Simplex Payment is confirmed collect the referral
   async getReferredData(trade_object, user_id, transaction_id) {
     try {
       await logger.info({
@@ -648,7 +653,7 @@ class CronController extends AppController {
             addRefferalAddData.coin_name = collectCoin;
             addRefferalAddData.user_id = referredUserData.id;
             addRefferalAddData.referred_user_id = referralData.id;
-            addRefferalAddData.txid = inputs.transaction_id;
+            addRefferalAddData.txid = transaction_id;
             addRefferalAddData.is_collected = false;
 
             var addedData = await ReferralModel
@@ -673,7 +678,7 @@ class CronController extends AppController {
             addRefferalAddData.coin_name = collectCoin;
             addRefferalAddData.user_id = referredUserData.id;
             addRefferalAddData.referred_user_id = referralData.id;
-            addRefferalAddData.txid = inputs.transaction_id;
+            addRefferalAddData.txid = transaction_id;
             addRefferalAddData.is_collected = false;
 
             var addedData = await ReferralModel
@@ -714,6 +719,7 @@ class CronController extends AppController {
     }
   }
 
+  // Check Simplex Payment Status for Each User
   async checkPaymentStatus() {
     try {
       await logger.info({
@@ -742,10 +748,11 @@ class CronController extends AppController {
         for (var j = 0; j < data.events.length; j++) {
           var payment_data = JSON.stringify(data.events[j].payment);
           payment_data = JSON.parse(payment_data);
-          if (payment_data.id == tradeData[i].payment_id && payment_data.status == "pending_simplexcc_payment_to_partner") {
+          var payment_status = data.events[j]
+          if (payment_data.id == tradeData[i].payment_id && payment_status.name == "payment_request_submitted") {
             await module.exports.deleteEvent(data.events[j].event_id)
           } else if (payment_data.id == tradeData[i].payment_id) {
-            if (payment_data.status == "pending_simplexcc_approval") {
+            if (payment_status.name == "payment_simplexcc_approved") {
               var tradeHistoryData = await SimplexTradeHistoryModel
                 .query()
                 .select()
@@ -768,7 +775,7 @@ class CronController extends AppController {
               if (referData != undefined) {
                 let referredData = await module.exports.getReferredData(tradeHistoryData, tradeHistoryData.user_id, tradeData[i].id);
               }
-            } else if (payment_data.status == "cancelled" || payment_data.status == "simplexcc_declined") {
+            } else if (payment_status.name == "payment_simplexcc_declined") {
               var tradeHistoryData = await SimplexTradeHistoryModel
                 .query()
                 .select()
@@ -800,6 +807,7 @@ class CronController extends AppController {
     }
   }
 
+  // Get Fiat Value from JST
   async getMarketPrice(symbol) {
     try {
       await logger.info({
@@ -854,6 +862,7 @@ class CronController extends AppController {
     }
   }
 
+  // Upload the documnets uploaded by the user during KYC submission
   async kycpicUpload(params) {
     await logger.info({
       "module": "Customer ID Verification",
@@ -988,6 +997,7 @@ class CronController extends AppController {
     });
   }
 
+  // Cron for KYC sending to the IDM
   async kyccron() {
     try {
       await logger.info({
@@ -1017,6 +1027,7 @@ class CronController extends AppController {
     }
   }
 
+  // Adding the fiat price fiat from Coin Market Cap
   async addPriceFromCoinmarketData() {
     await logger.info({
       "module": "Cron CoinMarketCap",
@@ -1068,6 +1079,444 @@ class CronController extends AppController {
     })
   }
 
+  // Function for getting the network Fee Value
+  async getNetworkFee(coin, walletId, amount, address) {
+    return new Promise(async (resolve, reject) => {
+      var coinData = await Coins
+        .query()
+        .select()
+        .first()
+        .where('deleted_at', null)
+        .andWhere('is_active', true)
+        .andWhere('coin_code', coin)
+        .orderBy('id', 'DESC');
+
+      var recipients = [
+        {
+          "amount": parseFloat((amount * 1e8).toFixed(process.env.TOTAL_PRECISION)),
+          "address": address
+        }
+      ];
+
+      if (coinData != undefined) {
+        var access_token_value = await module.exports.getDecryptData(process.env.BITGO_ACCESS_TOKEN);
+        await request({
+          url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}/tx/build`,
+          method: "POST",
+          headers: {
+            // 'cache-control': 'no-cache',
+            Authorization: `Bearer ${access_token_value}`,
+            'Content-Type': 'application/json'
+          },
+          body: {
+            "recipients": recipients
+          },
+          json: true
+        }, function (err, httpResponse, body) {
+          if (err) {
+            resolve(err);
+          }
+          if (body.error) {
+            resolve(body);
+          }
+          var feeValue = body.feeInfo
+          resolve(feeValue);
+        });
+      } else {
+        resolve("Coin Not Found")
+      }
+    })
+  }
+
+  // Send the Amount
+  async send(address, amount, feeRate, coin, walletId) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        var access_token_value = await this.getDecryptData(process.env.BITGO_ACCESS_TOKEN);
+        var passphrase_value = await this.getDecryptData(process.env.BITGO_PASSPHRASE);
+        var send_data = {
+          address: address,
+          amount: parseFloat(amount),
+          walletPassphrase: passphrase_value,
+          feeRate: feeRate
+        };
+        console.log(send_data)
+
+        request({
+          url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}/sendcoins`,
+          method: "POST",
+          headers: {
+            'cache-control': 'no-cache',
+            Authorization: `Bearer ${access_token_value}`,
+            'Content-Type': 'application/json'
+          },
+          body: send_data,
+          json: true
+        }, function (err, httpResponse, body) {
+          console.log(err);
+          console.log(body);
+          if (err) {
+            console.log("Error", err)
+            reject(err);
+          }
+          if (body.error) {
+            reject(body);
+          }
+          resolve(body);
+        });
+      } catch (error) {
+        console.log(error)
+        reject(error);
+      }
+    })
+  }
+
+  // Get Wallet Data Value
+  async getWalletData(walletId, coin) {
+    return new Promise(async (resolve, reject) => {
+      var access_token_value = await this.getDecryptData(process.env.BITGO_ACCESS_TOKEN);
+
+      await request({
+        url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}`,
+        method: "GET",
+        headers: {
+          'cache-control': 'no-cache',
+          Authorization: `Bearer ${access_token_value}`,
+          'Content-Type': 'application/json'
+        },
+        json: true
+      }, function (err, httpResponse, body) {
+        // console.log("wallet", err);
+        if (err) {
+          resolve(err);
+        }
+        if (body.error) {
+          resolve(body);
+        }
+        resolve(body);
+      });
+    })
+  }
+
+  // Send Left Over Residual Amount to Warm Wallet
+  async sendResidualReceiveFunds() {
+    console.log("SEND RESIDUAL RECEIVE FUNDS");
+    await cronSend("Before Send Receive")
+    var coinData = await Coins
+      .query()
+      .select('hot_receive_wallet_address', 'coin_code', 'warm_wallet_address', 'id')
+      .where('deleted_at', null)
+      .andWhere('is_active', true)
+      .orderBy('id', 'DESC');
+
+    if (coinData && coinData != undefined && coinData.length > 0) {
+      for (var i = 0; i < coinData.length; i++) {
+        if (coinData[i].hot_receive_wallet_address != null) {
+          var data = await module.exports.getWalletData(coinData[i].hot_receive_wallet_address, coinData[i].coin_code)
+          var warmWalletData = await module.exports.getWalletData(coinData[i].warm_wallet_address, coinData[i].coin_code);
+
+          var adminAddress = await Wallet
+            .query()
+            .first()
+            .select()
+            .where('deleted_at', null)
+            .andWhere('coin_id', coinData[i].id)
+            .andWhere('user_id', 36)
+            .andWhere('is_admin', true)
+            .orderBy('id', 'DESC');
+
+          var thresholdValue;
+          var feesValue;
+          if (coinData[i].coin_code == 'btc' || coinData[i].coin_code == 'tbtc') {
+            thresholdValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'btc_limit_wallet_transfer')
+              .orderBy('id', 'DESC');
+            feesValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'btc_static_fees')
+              .orderBy('id', 'DESC');
+          } else if (coinData[i].coin_code == 'eth' || coinData[i].coin_code == 'teth') {
+            thresholdValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'eth_limit_wallet_transfer')
+              .orderBy('id', 'DESC');
+            feesValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'eth_static_fees')
+              .orderBy('id', 'DESC');
+          } else if (coinData[i].coin_code == 'xrp' || coinData[i].coin_code == 'txrp') {
+            thresholdValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'xrp_limit_wallet_transfer')
+              .orderBy('id', 'DESC');
+            feesValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'xrp_static_fees')
+              .orderBy('id', 'DESC');
+          } else if (coinData[i].coin_code == 'ltc' || coinData[i].coin_code == 'tltc') {
+            thresholdValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'ltc_limit_wallet_transfer')
+              .orderBy('id', 'DESC');
+            feesValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'ltc_static_fees')
+              .orderBy('id', 'DESC');
+          }
+          thresholdValue = thresholdValue.value;
+          feesValue = feesValue.value;
+          if (data.balance && data.balance != undefined) {
+            var amount = data.balance - feesValue;
+            if ((parseFloat(amount) >= thresholdValue)) {
+              var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
+              if (warmWalletData.receiveAddress.address != undefined ) {
+                var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
+                console.log("getFeeValue", getFeeValue);
+                let size = getFeeValue.size; // in bytes
+                console.log("size", size);
+                let get_sizefor_tx = size / 1024; // in kb
+                console.log("get_sizefor_tx", get_sizefor_tx)
+                let amount_fee_rate = feesValue * get_sizefor_tx
+                console.log("amount_fee_rate", amount_fee_rate);
+                var exactSendAmount = parseFloat(amount) - parseFloat(getFeeValue.fee);
+                exactSendAmount = parseFloat(exactSendAmount).toFixed(8);
+                console.log(exactSendAmount)
+                var feeRateValue = parseInt(amount_fee_rate);
+                var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
+                console.log("sendTransaction", sendTransaction)
+
+                await cronSend("After Send Transaction Receive");
+                var transactionDetails = {
+                  coin_id: coinData[i].id,
+                  source_address: data.receiveAddress.address,
+                  destination_address: warmWalletData.receiveAddress.address,
+                  user_id: 36,
+                  amount: parseFloat(exactSendAmount / 1e8).toFixed(8),
+                  transaction_type: 'send',
+                  is_executed: true,
+                  transaction_id: sendTransaction.txid,
+                  faldax_fee: 0,
+                  actual_network_fees: parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8),
+                  estimated_network_fees: parseFloat(getFeeValue.fee / 1e8).toFixed(8),
+                  is_done: true,
+                  actual_amount: parseFloat(amount / 1e8).toFixed(8),
+                  is_admin: true,
+                  residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8),
+                  transaction_from: "Residual Receive to Warmwallet"
+                }
+                console.log(transactionDetails)
+                var value;
+                await residualTransactionModel
+                  .query()
+                  .insert(transactionDetails).then(newRecord => {
+                    console.log('New Record', newRecord);
+                  });;
+
+                var amountValue = parseFloat(exactSendAmount / 1e8).toFixed(8);
+                var balanceUpdate = parseFloat(adminAddress.balance) + parseFloat(amountValue)
+                console.log("balanceUpdate", balanceUpdate);
+                var placedBalanceUpdate = parseFloat(adminAddress.placed_balance) + parseFloat(amountValue)
+                var walletBalanceUpdate = await Wallet
+                  .query()
+                  .where('deleted_at', null)
+                  .andWhere('coin_id', coinData[i].id)
+                  .andWhere('user_id', 36)
+                  .andWhere('is_admin', true)
+                  .patch({
+                    "balance": balanceUpdate,
+                    "placed_balance": placedBalanceUpdate
+                  })
+
+
+                await cronSend("After Value Balance Receive");
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  async sendResidualSendFunds() {
+    console.log("INSIDE RESIDUAL SEND FUNDS")
+    await cronSend("Before Send Send")
+    var coinData = await Coins
+      .query()
+      .select('hot_send_wallet_address', 'coin_code', 'warm_wallet_address', 'id')
+      .where('deleted_at', null)
+      .andWhere('is_active', true)
+      .orderBy('id', 'DESC');
+
+    if (coinData && coinData != undefined && coinData.length > 0) {
+      for (var i = 0; i < coinData.length; i++) {
+        if (coinData[i].hot_send_wallet_address != null) {
+          var data = await module.exports.getWalletData(coinData[i].hot_send_wallet_address, coinData[i].coin_code)
+          console.log(data);
+          var warmWalletData = await module.exports.getWalletData(coinData[i].warm_wallet_address, coinData[i].coin_code);
+          var adminAddress = await Wallet
+            .query()
+            .first()
+            .select()
+            .where('deleted_at', null)
+            .andWhere('coin_id', coinData[i].id)
+            .andWhere('user_id', 36)
+            .andWhere('is_admin', true)
+            .orderBy('id', 'DESC');
+
+          var thresholdValue;
+          var feesValue;
+          if (coinData[i].coin_code == 'btc' || coinData[i].coin_code == 'tbtc') {
+            thresholdValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'btc_limit_wallet_transfer')
+              .orderBy('id', 'DESC');
+            feesValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'btc_static_fees')
+              .orderBy('id', 'DESC');
+          } else if (coinData[i].coin_code == 'eth' || coinData[i].coin_code == 'teth') {
+            thresholdValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'eth_limit_wallet_transfer')
+              .orderBy('id', 'DESC');
+            feesValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'eth_static_fees')
+              .orderBy('id', 'DESC');
+          } else if (coinData[i].coin_code == 'xrp' || coinData[i].coin_code == 'txrp') {
+            thresholdValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'xrp_limit_wallet_transfer')
+              .orderBy('id', 'DESC');
+            feesValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'xrp_static_fees')
+              .orderBy('id', 'DESC');
+          } else if (coinData[i].coin_code == 'ltc' || coinData[i].coin_code == 'tltc') {
+            thresholdValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'ltc_limit_wallet_transfer')
+              .orderBy('id', 'DESC');
+            feesValue = await AdminSettingModel
+              .query()
+              .first()
+              .select('value')
+              .where('deleted_at', null)
+              .andWhere('slug', 'ltc_static_fees')
+              .orderBy('id', 'DESC');
+          }
+          thresholdValue = thresholdValue.value;
+          feesValue = feesValue.value;
+          console.log(feesValue)
+          console.log(coinData[i].coin_code + "    " + data);
+          console.log(data.balance)
+          if (data.balance && data.balance != undefined) {
+            var amount = data.balance - feesValue;
+            console.log(amount);
+            if ((parseFloat(amount) >= thresholdValue)) {
+              var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
+              console.log(amountToBeSend);
+              if (warmWalletData.receiveAddress.address != undefined && adminAddress.receive_address != undefined) {
+                var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_send_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
+                let size = getFeeValue.size; // in bytes
+                let get_sizefor_tx = size / 1024; // in kb
+                let amount_fee_rate = feesValue * get_sizefor_tx
+                var exactSendAmount = parseFloat(amount) - parseFloat(getFeeValue.fee);
+                exactSendAmount = parseFloat(exactSendAmount).toFixed(8);
+                var feeRateValue = parseInt(amount_fee_rate);
+                var sendTransaction = await module.exports.send(adminAddress.receive_address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_send_wallet_address);
+                console.log(sendTransaction);
+                await cronSend("After Send Send");
+                var transactionDetails = {
+                  coin_id: coinData[i].id,
+                  source_address: data.receiveAddress.address,
+                  destination_address: warmWalletData.receiveAddress.address,
+                  user_id: 36,
+                  amount: parseFloat(exactSendAmount / 1e8).toFixed(8),
+                  transaction_type: 'send',
+                  is_executed: true,
+                  transaction_id: sendTransaction.txid,
+                  faldax_fee: 0,
+                  actual_network_fees: parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8),
+                  estimated_network_fees: parseFloat(getFeeValue.fee / 1e8).toFixed(8),
+                  is_done: true,
+                  actual_amount: parseFloat(exactSendAmount / 1e8).toFixed(8),
+                  is_admin: true,
+                  residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8),
+                  transaction_from: "Residual Send to Warmwallet"
+                }
+                await residualTransactionModel
+                  .query()
+                  .insert(transactionDetails);
+
+                var amountValue = parseFloat(exactSendAmount / 1e8).toFixed(8);
+                var balanceUpdate = parseFloat(adminAddress.balance) + parseFloat(amountValue)
+                console.log("balanceUpdate", balanceUpdate);
+                var placedBalanceUpdate = parseFloat(adminAddress.placed_balance) + parseFloat(amountValue)
+                var walletBalanceUpdate = await Wallet
+                  .query()
+                  .where('deleted_at', null)
+                  .andWhere('coin_id', coinData[i].id)
+                  .andWhere('user_id', 36)
+                  .andWhere('is_admin', true)
+                  .patch({
+                    "balance": balanceUpdate,
+                    "placed_balance": placedBalanceUpdate
+                  })
+                await cronSend("After Balance Update Send");
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 module.exports = new CronController();
