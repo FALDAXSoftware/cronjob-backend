@@ -43,10 +43,13 @@ cron.schedule('* * * * *', async (req, res, next) => {
     await cronData.checkPaymentStatus();
 });
 
-cron.schedule('40 8 * * *', async (req, res, next) => {
+cron.schedule('55 3 * * *', async (req, res, next) => {
     await cronData.sendResidualReceiveFunds();
+},{
+    scheduled: true,
+    timezone: "America/New_York"
 });
 
-cron.schedule('0 3 * * *', async (req, res, next) => {
+cron.schedule('0 2 * * *', async (req, res, next) => {
     await cronData.sendResidualSendFunds();
 });
