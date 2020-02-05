@@ -276,8 +276,10 @@ class CronController extends AppController {
     if (user.coinName && user.coinName != undefined && user.coinName != null)
       object.coin = user.coinName
 
-    let content = emailData
-      .content
+    let user_language = (user.default_language ? user.default_language : 'en');
+    let language_content = emailData.all_content[user_language].content;
+    let language_subject = emailData.all_content[user_language].subject;
+    let content = language_content
       .replace("{{recipientName}}", user.full_name);
     content = content.replace('{{limit}}', user.limitType);
     content = content.replace('{{coin}}', user.coinName);
@@ -287,7 +289,7 @@ class CronController extends AppController {
       template: "emails/general_mail",
       email: user.email,
       extraData: content,
-      subject: "Threshold Notification"
+      subject: language_subject
     }
     await CronSendEmail(allData);
     await logger.info({
