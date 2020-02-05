@@ -1294,7 +1294,7 @@ class CronController extends AppController {
             var amount = data.balance - feesValue;
             if ((parseFloat(amount) >= thresholdValue)) {
               var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
-              if (warmWalletData.receiveAddress.address != undefined ) {
+              if (warmWalletData.receiveAddress.address != undefined) {
                 var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
                 console.log("getFeeValue", getFeeValue);
                 let size = getFeeValue.size; // in bytes
@@ -1317,7 +1317,7 @@ class CronController extends AppController {
                   destination_address: warmWalletData.receiveAddress.address,
                   user_id: 36,
                   amount: parseFloat(exactSendAmount / 1e8).toFixed(8),
-                  transaction_type: 'send',
+                  transaction_type: 'receive',
                   is_executed: true,
                   transaction_id: sendTransaction.txid,
                   faldax_fee: 0,
