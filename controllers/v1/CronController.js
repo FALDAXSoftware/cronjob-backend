@@ -276,8 +276,10 @@ class CronController extends AppController {
     if (user.coinName && user.coinName != undefined && user.coinName != null)
       object.coin = user.coinName
 
-    let content = emailData
-      .content
+    let user_language = (user.default_language ? user.default_language : 'en');
+    let language_content = emailData.all_content[user_language].content;
+    let language_subject = emailData.all_content[user_language].subject;
+    let content = language_content
       .replace("{{recipientName}}", user.full_name);
     content = content.replace('{{limit}}', user.limitType);
     content = content.replace('{{coin}}', user.coinName);
@@ -287,7 +289,7 @@ class CronController extends AppController {
       template: "emails/general_mail",
       email: user.email,
       extraData: content,
-      subject: "Threshold Notification"
+      subject: language_subject
     }
     await CronSendEmail(allData);
     await logger.info({
@@ -1294,7 +1296,7 @@ class CronController extends AppController {
             var amount = data.balance - feesValue;
             if ((parseFloat(amount) >= thresholdValue)) {
               var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
-              if (warmWalletData.receiveAddress.address != undefined ) {
+              if (warmWalletData.receiveAddress.address != undefined) {
                 var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
                 console.log("getFeeValue", getFeeValue);
                 let size = getFeeValue.size; // in bytes
@@ -1317,7 +1319,7 @@ class CronController extends AppController {
                   destination_address: warmWalletData.receiveAddress.address,
                   user_id: 36,
                   amount: parseFloat(exactSendAmount / 1e8).toFixed(8),
-                  transaction_type: 'send',
+                  transaction_type: 'receive',
                   is_executed: true,
                   transaction_id: sendTransaction.txid,
                   faldax_fee: 0,
