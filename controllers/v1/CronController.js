@@ -302,16 +302,17 @@ class CronController extends AppController {
 
   // Function for decryting the encrypted Value
   async getDecryptData(keyValue) {
+    console.log(keyValue)
     await logger.info({
       "module": "Decryting the Data",
       "user_id": "user_decrypt",
       "url": "Cron Function",
       "type": "Enter"
     }, "Entering the function")
-    // var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
-    // var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
-    var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-    var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
+    var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
+    var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
+    // var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    // var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
 
     // When ready to decrypt the hex string, convert it back to bytes
     var encryptedBytes = aesjs
@@ -1093,22 +1094,40 @@ class CronController extends AppController {
         .andWhere('coin_code', coin)
         .orderBy('id', 'DESC');
 
-      var recipients = [
-        {
-          "amount": parseFloat((amount * 1e8).toFixed(process.env.TOTAL_PRECISION)),
-          "address": address
+        if(coin != 'eth' && coin != 'xrp'){
+          var recipients = [
+            {
+              "amount": parseFloat((amount * 1e8).toFixed(process.env.TOTAL_PRECISION)),
+              "address": address
+            }
+          ];
+        }else if(coin == "eth"){
+          var recipients = [
+            {
+              "amount": (1).toString(),
+              "address": address
+            }
+          ];
+        }else if(coin == 'xrp'){
+          var recipients = [
+            {
+              "amount": (1).toString(),
+              "address": address
+            }
+          ];
         }
-      ];
-
+      console.log("recipients",recipients)
       if (coinData != undefined) {
         var access_token_value = await module.exports.getDecryptData(process.env.BITGO_ACCESS_TOKEN);
+        var enterprise_value = await module.exports.getDecryptData(process.env.BITGO_ENTERPRISE);
         await request({
           url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}/tx/build`,
           method: "POST",
           headers: {
             // 'cache-control': 'no-cache',
             Authorization: `Bearer ${access_token_value}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'enterprise_id':enterprise_value
           },
           body: {
             "recipients": recipients
@@ -1121,7 +1140,8 @@ class CronController extends AppController {
           if (body.error) {
             resolve(body);
           }
-          var feeValue = body.feeInfo
+          console.log(body);
+          var feeValue = (coin != 'xrp') ? (body.feeInfo) : (body.txInfo.Fee);
           resolve(feeValue);
         });
       } else {
@@ -1134,23 +1154,107 @@ class CronController extends AppController {
   async send(address, amount, feeRate, coin, walletId) {
     return new Promise(async (resolve, reject) => {
       try {
+        console.log("address",address);
+        console.log("amount",amount);
+        console.log("feeRate",feeRate);
+        console.log("coin",coin);
+        console.log("walletId",walletId);
         var access_token_value = await this.getDecryptData(process.env.BITGO_ACCESS_TOKEN);
-        var passphrase_value = await this.getDecryptData(process.env.BITGO_PASSPHRASE);
+        // var passphrase_value = await this.getDecryptData(process.env.BITGO_PASSPHRASE);
+        var passphrase_value = process.env.BITGO_PASSPHRASE;
+
+        var coinData = await Coins
+          .query()
+          .select()
+          .first()
+          .where('deleted_at', null)
+          .andWhere('is_active', true)
+          .andWhere('coin_code', coin)
+          .orderBy('id', 'DESC');
+        console.log("coindata",coinData);
+        if (coinData && coinData != undefined) {
+          if (coin == "btc" ) { // BTC
+            if (coinData.warm_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_BTC_WARM_WALLET_PASSPHRASE;
+              console.log("In warm_wallet_address");
+            } else if (coinData.hot_send_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_BTC_HOT_SEND_WALLET_PASSPHRASE;
+              console.log("In hot_send_wallet_address");
+            } else if (coinData.hot_receive_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_BTC_HOT_RECEIVE_WALLET_PASSPHRASE;
+              console.log("In hot_receive_wallet_address");
+            } else if (coinData.custody_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_PASSPHRASE;
+              console.log("In custody_wallet_address");
+            }
+            passphrase_value = process.env.BITGO_BTC_HOT_SEND_WALLET_PASSPHRASE;
+          }else if (coin == "ltc") { // LTC
+            if (coinData.warm_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_LTC_WARM_WALLET_PASSPHRASE;
+              console.log("In warm_wallet_address");
+            } else if (coinData.hot_send_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_LTC_HOT_SEND_WALLET_PASSPHRASE;
+              console.log("In hot_send_wallet_address");
+            } else if (coinData.hot_receive_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_LTC_HOT_RECEIVE_WALLET_PASSPHRASE;
+              console.log("In hot_receive_wallet_address LTC");
+            } else if (coinData.custody_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_PASSPHRASE;
+              console.log("In custody_wallet_address");
+            }
+          }else if (coin == "xrp") { // XRP
+            if (coinData.warm_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_XRP_WARM_WALLET_PASSPHRASE;
+              console.log("In warm_wallet_address");
+            } else if (coinData.hot_send_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_XRP_HOT_SEND_WALLET_PASSPHRASE;
+              console.log("In hot_send_wallet_address");
+            } else if (coinData.hot_receive_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_XRP_HOT_RECEIVE_WALLET_PASSPHRASE;
+              console.log("In hot_receive_wallet_address LTC");
+            } else if (coinData.custody_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_PASSPHRASE;
+              console.log("In custody_wallet_address");
+            }
+          }else if (coin == "eth") { // ETH
+            if (coinData.warm_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_ETH_WARM_WALLET_PASSPHRASE;
+              console.log("In warm_wallet_address");
+            } else if (coinData.hot_send_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_ETH_HOT_SEND_WALLET_PASSPHRASE;
+              console.log("In hot_send_wallet_address");
+            } else if (coinData.hot_receive_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_ETH_HOT_RECEIVE_WALLET_PASSPHRASE;
+              console.log("In hot_receive_wallet_address LTC");
+            } else if (coinData.custody_wallet_address == walletId) {
+              passphrase_value = process.env.BITGO_PASSPHRASE;
+              console.log("In custody_wallet_address");
+            }
+          } else {
+            passphrase_value = process.env.BITGO_PASSPHRASE;
+          }
+        } else {
+          passphrase_value = process.env.BITGO_PASSPHRASE;
+        }
+        console.log("passphrase_value",passphrase_value);
+        var wallet_passphrase = await this.getDecryptData(passphrase_value);
+        var enterprise_value = await module.exports.getDecryptData(process.env.BITGO_ENTERPRISE);
+        console.log("wallet_passphrase",wallet_passphrase);
         var send_data = {
           address: address,
-          amount: parseFloat(amount),
-          walletPassphrase: passphrase_value,
-          feeRate: feeRate
+          amount: (amount).toString(),
+          walletPassphrase: wallet_passphrase,
+          // feeRate: feeRate
         };
-        console.log(send_data)
-
+        console.log("senddata", send_data);
         request({
           url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}/sendcoins`,
           method: "POST",
           headers: {
             'cache-control': 'no-cache',
             Authorization: `Bearer ${access_token_value}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'enterprise_id':enterprise_value
           },
           body: send_data,
           json: true
@@ -1213,6 +1317,7 @@ class CronController extends AppController {
 
     if (coinData && coinData != undefined && coinData.length > 0) {
       for (var i = 0; i < coinData.length; i++) {
+        console.log("coinData[i]",coinData[i]);
         if (coinData[i].hot_receive_wallet_address != null) {
           var data = await module.exports.getWalletData(coinData[i].hot_receive_wallet_address, coinData[i].coin_code)
           var warmWalletData = await module.exports.getWalletData(coinData[i].warm_wallet_address, coinData[i].coin_code);
@@ -1292,11 +1397,23 @@ class CronController extends AppController {
           }
           thresholdValue = thresholdValue.value;
           feesValue = feesValue.value;
-          if (data.balance && data.balance != undefined) {
-            var amount = data.balance - feesValue;
+          console.log("thresholdValue",thresholdValue);
+          console.log("feesValue",feesValue);
+          console.log("coinData[i].coin_code",coinData[i].coin_code);
+          console.log("data",data);
+          if ((data.balance && data.balance != undefined && coinData[i].coin_code == "txrp") || (data.balanceString && data.balanceString != undefined && coinData[i].coin_code == "xrp")) {
+            var amount = (data.balance) ? (data.balance - feesValue) : (data.balanceString - feesValue);
+            amount = 1000000000000000000;
+            console.log("amount",amount);
             if ((parseFloat(amount) >= thresholdValue)) {
-              var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
-              if (warmWalletData.receiveAddress.address != undefined) {
+              if(coinData[i].coin_code != "eth"){
+                var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
+              }else if(coinData[i].coin_code == "eth"){
+                var amountToBeSend = parseFloat(amount / 1e18).toFixed(8)
+              }
+              console.log("amountToBeSend",amountToBeSend);
+              console.log("warmWalletData.receiveAddress.address",warmWalletData.receiveAddress.address)
+              if (warmWalletData.receiveAddress.address != undefined && coinData[i].coin_code != 'xrp' && coinData[i].coin_code != 'eth') {
                 var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
                 console.log("getFeeValue", getFeeValue);
                 let size = getFeeValue.size; // in bytes
@@ -1309,6 +1426,7 @@ class CronController extends AppController {
                 exactSendAmount = parseFloat(exactSendAmount).toFixed(8);
                 console.log(exactSendAmount)
                 var feeRateValue = parseInt(amount_fee_rate);
+                console.log("======SEND======",feeRateValue);
                 var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
                 console.log("sendTransaction", sendTransaction)
 
@@ -1318,17 +1436,17 @@ class CronController extends AppController {
                   source_address: data.receiveAddress.address,
                   destination_address: warmWalletData.receiveAddress.address,
                   user_id: 36,
-                  amount: parseFloat(exactSendAmount / 1e8).toFixed(8),
+                  amount: (coinData[i].coin_code != "eth") ? (parseFloat(exactSendAmount / 1e8).toFixed(8)) : (parseFloat(exactSendAmount / 1e18).toFixed(8)),
                   transaction_type: 'receive',
                   is_executed: true,
                   transaction_id: sendTransaction.txid,
                   faldax_fee: 0,
-                  actual_network_fees: parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8),
-                  estimated_network_fees: parseFloat(getFeeValue.fee / 1e8).toFixed(8),
+                  actual_network_fees:(coinData[i].coin_code != "eth") ? ( parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8)) : (parseFloat(sendTransaction,transfer.feeString / 1e18)),
+                  estimated_network_fees:(coinData[i].coin_code != "eth") ? (parseFloat(getFeeValue.fee / 1e8).toFixed(8)) : (parseFloat(getFeeValue.fee / 1e18).toFixed(8)),
                   is_done: true,
                   actual_amount: parseFloat(amount / 1e8).toFixed(8),
                   is_admin: true,
-                  residual_amount: parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8),
+                  residual_amount:(coinData[i].coin_code != "eth") ? (parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8)) : (parseFloat(getFeeValue.fee / 1e18).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e18).toFixed(8)),
                   transaction_from: "Residual Receive to Warmwallet"
                 }
                 console.log(transactionDetails)
@@ -1339,7 +1457,7 @@ class CronController extends AppController {
                     console.log('New Record', newRecord);
                   });;
 
-                var amountValue = parseFloat(exactSendAmount / 1e8).toFixed(8);
+                var amountValue = (coinData[i].coin_code != "eth") ? (parseFloat(exactSendAmount / 1e8).toFixed(8)) : (parseFloat(exactSendAmount / 1e18).toFixed(8));
                 var balanceUpdate = parseFloat(adminAddress.balance) + parseFloat(amountValue)
                 console.log("balanceUpdate", balanceUpdate);
                 var placedBalanceUpdate = parseFloat(adminAddress.placed_balance) + parseFloat(amountValue)
@@ -1356,10 +1474,19 @@ class CronController extends AppController {
 
 
                 await cronSend("After Value Balance Receive");
+              }else if(coinData[i].coin_code == "xrp"){
+                var getFeeValueXRP = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
+                // var sendTransactionValue = await module.exports.send(warmWalletData.receiveAddress.address, 1, 0.0, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
+                console.log("sendTransactionValue",sendTransactionValue)
+              }else if(coinData[i].coin_code == "eth"){
+                var getFeeValueXRP = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
+                var sendTransactionValue = await module.exports.send(warmWalletData.receiveAddress.address, 0.004, 0.0, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
+                console.log("sendTransactionValue",sendTransactionValue)
               }
             }
           }
         }
+
       }
     }
   }

@@ -14,14 +14,14 @@ const stream = require('gelf-stream').forBunyan(
 configs.streams.push({
     type: 'raw',
     stream: stream,
-    level: 'info'
-    // level: 61 // To disable logs
+    // level: 'info'
+    level: 61 // To disable logs
 })
 configs.streams.push({
     type: 'stream',
     stream: process.stderr,
-    level: 'error'
-    // level: 61 // To disable logs
+    // level: 'error'
+    level: 61 // To disable logs
 })
 
 const logger = bunyan.createLogger(configs)
