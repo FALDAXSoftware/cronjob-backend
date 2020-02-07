@@ -1250,14 +1250,28 @@ class CronController extends AppController {
         console.log("passphrase_value", passphrase_value);
         var wallet_passphrase = await this.getDecryptData(passphrase_value);
         var enterprise_value = await module.exports.getDecryptData(process.env.BITGO_ENTERPRISE);
-        console.log("wallet_passphrase", wallet_passphrase);
         var send_data = {
           address: address,
-          amount: (amount).toString(),
-          walletPassphrase: wallet_passphrase,
-          // feeRate: feeRate
+          // amount: parseFloat(inputs.amount),
+          walletPassphrase: wallet_passphrase
         };
-        console.log("senddata", send_data);
+
+        send_data.amount = parseFloat(amount);
+        if (coin == "txrp" || coin == "xrp" || coin == "teth" || coin == "eth") {
+          send_data.amount = (amount).toString();
+        }
+        if (coin != "txrp" && coin != "xrp" && coin != "teth" && coin != "eth") {
+          if (inputs.feeRate && feeRate > 0) {
+            send_data.feeRate = feeRate;
+            // send_data.fee = inputs.feeRate;
+            // send_data.maxFeeRate = inputs.feeRate;
+          }
+        }
+
+        send_data.comment = 'Timestamp_' + Math.random().toString(36).substring(2) + "_" + (new Date().getTime());
+        send_data.sequenceId = 'Timestamp_' + Math.random().toString(36).substring(2) + "_" + (new Date().getTime());
+        // send_data.label = 'Timestamp_'+Math.random().toString(36).substring(2)+"_"+(new Date().getTime());
+        console.log("send_data", send_data);
         request({
           url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}/sendcoins`,
           method: "POST",
@@ -1413,92 +1427,74 @@ class CronController extends AppController {
           console.log("coinData[i].coin_code", coinData[i].coin_code);
           console.log("data", data);
           if ((data.balance && data.balance != undefined) || (data.balanceString && data.balanceString != undefined && coinData[i].coin_code != "teth") || ((data.balanceString && data.balanceString != undefined && coinData[i].coin_code != "txrp"))) {
-            var amount = (data.balance) ? (data.balance - feesValue) : (data.balanceString - feesValue);
-            amount = 5000000;
-            console.log("amount", amount);
-            if ((parseFloat(amount) >= thresholdValue)) {
-              if (coinData[i].coin_code != "teth" || coinData[i].coin_code != 'txrp') {
-                var amountToBeSend = parseFloat(amount / 1e8).toFixed(8)
-              } else if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth") {
-                var amountToBeSend = parseFloat(amount / 1e9).toFixed(8)
-              } else if (coinData[i].coin_code == "xrp" || coinData[i].coin_code == "txrp") {
-                var amountToBeSend = parseFloat(amount / 1e6).toFixed(8)
-              }
-              console.log("amountToBeSend", amountToBeSend);
-              console.log("warmWalletData.receiveAddress.address", warmWalletData.receiveAddress.address)
-              if (warmWalletData.receiveAddress.address != undefined && coinData[i].coin_code != 'txrp' && coinData[i].coin_code != 'teth' && coinData[i].coin_code != 'xrp' && coinData[i].coin_code != 'eth') {
-                var getFeeValue = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
+            var amount = (coinData[i].coin_code != 'teth' || coinData[i].coin_code != 'eth' || coinData[i].coin_code != 'txrp' || coinData[i].coin_code != 'xrp') ? (data.balance) : data.balanceString;
+            var exactSendAmount = 0.0;
+            var feeRateValue;
+            var estimateFee = 0.0
+            if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth") {
+              var reposneData = await module
+                .exports
+                .getNetworkFee(coinData[i].coin_code, (amount / 1e9), warmWalletData.receiveAddress.address);
+              feeValue = (reposneData / 1e9)
+              estimateFee = feeValue
+              exactSendAmount = amount;
+              feeRateValue = 0.0
+            } else if (coinData[i].coin_code == 'txrp' || coinData[i].coinData[i].coin_code == 'xrp') {
+              var feesValue = parseFloat(45 / 1e6).toFixed(8)
+              estimateFee = feesValue;
+              exactSendAmount = amount - 45;
+              feeValue = parseFloat(45 / 1000000).toFixed(8)
+              feeRateValue = 0.0
+            } else {
+              amountToBeSend = amount - feesValue;
+              var getFeeValue = await module
+                .exports
+                .getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
 
-                if (coinData[i].coin != "teth" || coinData[i].coin == "eth" || coinData[i].coin == "txrp" || coinData[i].coin == "xrp") {
-                  var get_static_fees_data = await sails.helpers.getAssetFeesLimit(coinData[i][i].coin, 1);
-                  warmWalletAmountAfter = warmWalletAmount - get_static_fees_data;
-                  console.log("warmWalletAmount after static fees", warmWalletAmount);
-
-                  var reposneData = await sails
-                    .helpers
-                    .wallet
-                    .getNetworkFee(req.body.coin, (warmWalletAmountAfter / 1e8), warmWallet.receiveAddress.address);
-
-                  console.log("reposneData", reposneData)
-                  console.log("Fee Rate ??????", reposneData.feeRate);
-
-                  warmWalletAmount = warmWalletAmount - reposneData.fee
-                  console.log("After Dynamic Fees Deduction >>>>>", warmWalletAmount)
-                  // Calculate Sizes
-                  var size = reposneData.size; // in bytes
-                  var get_sizefor_tx = size / 1024; // in kb
-                  var amount_fee_rate = get_static_fees_data * get_sizefor_tx
-                  console.log("get_static_fees_data", get_static_fees_data);
-                  console.log("size", size);
-                  console.log("get_sizefor_tx", get_sizefor_tx);
-                  console.log("amount_fee_rate", amount_fee_rate);
-                  reposneData.feeRate = parseInt(amount_fee_rate);
-                  var feeRateValue = reposneData.feeRate
-                  feeValue = (reposneData.fee / division)
-                } else if (req.body.coin == 'txrp' || req.body.coin == 'xrp') {
-                  var feesValue = parseFloat(45 / division).toFixed(8)
-                  warmWalletAmount = warmWalletAmount - 45;
-                  feeValue = parseFloat(45 / 1000000).toFixed(8)
-                } else if (req.body.coin == 'teth' || req.body.coin == 'eth') {
-                  var reposneData = await sails
-                    .helpers
-                    .wallet
-                    .getNetworkFee(req.body.coin, (warmWalletAmount / 1e8), warmWallet.receiveAddress.address);
-                  feeValue = (reposneData / division)
-                }
-
-                console.log("getFeeValue", getFeeValue);
-                let size = getFeeValue.size; // in bytes
-                console.log("size", size);
-                let get_sizefor_tx = size / 1024; // in kb
-                console.log("get_sizefor_tx", get_sizefor_tx)
-                let amount_fee_rate = feesValue * get_sizefor_tx
-                console.log("amount_fee_rate", amount_fee_rate);
-                var exactSendAmount = parseFloat(amount) - parseFloat(getFeeValue.fee);
-                exactSendAmount = parseFloat(exactSendAmount).toFixed(8);
-                console.log(exactSendAmount)
-                var feeRateValue = parseInt(amount_fee_rate);
-                console.log("======SEND======", feeRateValue);
-                // var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
+              console.log("getFeeValue", getFeeValue);
+              var size = getFeeValue.size; // in bytes
+              console.log("size", size);
+              var get_sizefor_tx = size / 1024; // in kb
+              console.log("get_sizefor_tx", get_sizefor_tx)
+              var amount_fee_rate = feesValue * get_sizefor_tx
+              exactSendAmount = parseFloat(amount) - parseFloat(2 * (getFeeValue.fee));
+              estimateFee = (parseFloat(2 * getFeeValue.fee) / 1e8).toFixed(8);
+              exactSendAmount = parseFloat(exactSendAmount).toFixed(8);
+              console.log(exactSendAmount)
+              feeRateValue = parseInt(amount_fee_rate);
+              console.log("======SEND======", feeRateValue);
+            }
+            // amount = 5000000;
+            // console.log("amount", amount);
+            if ((parseFloat(exactSendAmount) >= thresholdValue)) {
+              if (warmWalletData.receiveAddress.address != undefined) {
+                var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
                 console.log("sendTransaction", sendTransaction)
 
                 await cronSend("After Send Transaction Receive");
+                if ((coinData[i].coin_code != "teth" && coinData[i].coin_code != 'txrp') && coinData[i].coin_code != "eth" && coinData[i].coin_code != 'xrp') {
+                  exactSendAmount = parseFloat(exactSendAmount / 1e8).toFixed(8)
+                } else if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth") {
+                  exactSendAmount = parseFloat(exactSendAmount / 1e9).toFixed(8)
+                } else if (coinData[i].coin_code == "xrp" || coinData[i].coin_code == "txrp") {
+                  exactSendAmount = parseFloat(exactSendAmount / 1e6).toFixed(8);
+                }
                 var transactionDetails = {
                   coin_id: coinData[i].id,
                   source_address: data.receiveAddress.address,
                   destination_address: warmWalletData.receiveAddress.address,
                   user_id: 36,
-                  amount: (coinData[i].coin_code != "eth") ? (parseFloat(exactSendAmount / 1e8).toFixed(8)) : (parseFloat(exactSendAmount / 1e18).toFixed(8)),
+                  amount: (exactSendAmount),
                   transaction_type: 'receive',
                   is_executed: true,
                   transaction_id: sendTransaction.txid,
                   faldax_fee: 0,
-                  actual_network_fees: (coinData[i].coin_code != "eth") ? (parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8)) : (parseFloat(sendTransaction, transfer.feeString / 1e18)),
-                  estimated_network_fees: (coinData[i].coin_code != "eth") ? (parseFloat(getFeeValue.fee / 1e8).toFixed(8)) : (parseFloat(getFeeValue.fee / 1e18).toFixed(8)),
+                  actual_network_fees: (parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8)),
+                  estimated_network_fees: (parseFloat(estimateFee / 1e8).toFixed(8)),
                   is_done: true,
                   actual_amount: parseFloat(amount / 1e8).toFixed(8),
                   is_admin: true,
-                  residual_amount: (coinData[i].coin_code != "eth") ? (parseFloat(getFeeValue.fee / 1e8).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8)) : (parseFloat(getFeeValue.fee / 1e18).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e18).toFixed(8)),
+                  residual_amount: (parseFloat(estimateFee).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / 1e8).toFixed(8)),
                   transaction_from: "Residual Receive to Warmwallet"
                 }
                 console.log(transactionDetails)
@@ -1509,7 +1505,7 @@ class CronController extends AppController {
                     console.log('New Record', newRecord);
                   });;
 
-                var amountValue = (coinData[i].coin_code != "eth") ? (parseFloat(exactSendAmount / 1e8).toFixed(8)) : (parseFloat(exactSendAmount / 1e18).toFixed(8));
+                var amountValue = (exactSendAmount);
                 var balanceUpdate = parseFloat(adminAddress.balance) + parseFloat(amountValue)
                 console.log("balanceUpdate", balanceUpdate);
                 var placedBalanceUpdate = parseFloat(adminAddress.placed_balance) + parseFloat(amountValue)
@@ -1526,17 +1522,6 @@ class CronController extends AppController {
 
 
                 await cronSend("After Value Balance Receive");
-              } else if (coinData[i].coin_code == "txrp" || coinData[i].coin_code == "xrp") {
-                console.log("ELSE IF????????");
-                var getFeeValueXRP = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, (1).toString(), warmWalletData.receiveAddress.address);
-                console.log("getFeeValueXRP", getFeeValueXRP)
-                // var sendTransactionValue = await module.exports.send(warmWalletData.receiveAddress.address, 1, 0.0, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
-                console.log("sendTransactionValue", sendTransactionValue)
-              } else if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth") {
-                var getFeeValueETH = await module.exports.getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, (100).toString(), warmWalletData.receiveAddress.address);
-                console.log("getFeeValue", getFeeValue);
-                var sendTransactionValue = await module.exports.send(warmWalletData.receiveAddress.address, 100, 0.0, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
-                console.log("sendTransactionValue", sendTransactionValue)
               }
             }
           }
