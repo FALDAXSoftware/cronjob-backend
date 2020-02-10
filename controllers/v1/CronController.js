@@ -925,7 +925,8 @@ class CronController extends AppController {
     }
     kycUploadDetails.bc = kyc_details.city;
     kycUploadDetails.bz = kyc_details.zip;
-    kycUploadDetails.dob = moment(kyc_details.dob, 'DD-MM-YYYY').format('YYYY-MM-DD');
+    // kycUploadDetails.dob = moment(kyc_details.dob, 'DD-MM-YYYY').format('YYYY-MM-DD');
+    kycUploadDetails.dob = kyc_details.dob;
 
     var idm_key = await module.exports.getDecryptData(process.env.IDM_TOKEN);
     request.post({
