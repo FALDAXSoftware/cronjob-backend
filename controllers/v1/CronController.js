@@ -302,17 +302,16 @@ class CronController extends AppController {
 
   // Function for decryting the encrypted Value
   async getDecryptData(keyValue) {
-    console.log(keyValue)
     await logger.info({
       "module": "Decryting the Data",
       "user_id": "user_decrypt",
       "url": "Cron Function",
       "type": "Enter"
     }, "Entering the function")
-    // var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
-    // var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
-    var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-    var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
+    var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
+    var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
+    // var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    // var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
 
     // When ready to decrypt the hex string, convert it back to bytes
     var encryptedBytes = aesjs
@@ -725,6 +724,7 @@ class CronController extends AppController {
   // Check Simplex Payment Status for Each User
   async checkPaymentStatus() {
     try {
+      console.log("Checkpaytment");
       await logger.info({
         "module": "Simplex Payment Status Update",
         "user_id": "user_simplex",
@@ -734,64 +734,70 @@ class CronController extends AppController {
       var data = await module
         .exports
         .getEventData();
+      console.log("data",data)
       var tradeData = await SimplexTradeHistoryModel
         .query()
         .select()
         .where('deleted_at', null)
         .andWhere('trade_type', 3)
         .orderBy('id', 'DESC');
-
+      console.log("tradeData.length",tradeData.length);
       await logger.info({
         "module": "Simplex Payment Status Update",
         "user_id": "user_simplex",
         "url": "Cron Function",
         "type": "Success"
       }, data)
+
+      // return 1;
       for (var i = 0; i < tradeData.length; i++) {
-        for (var j = 0; j < data.events.length; j++) {
-          var payment_data = JSON.stringify(data.events[j].payment);
-          payment_data = JSON.parse(payment_data);
-          var payment_status = data.events[j]
-          if (payment_data.id == tradeData[i].payment_id && payment_status.name == "payment_request_submitted") {
-            await module.exports.deleteEvent(data.events[j].event_id)
-          } else if (payment_data.id == tradeData[i].payment_id) {
-            if (payment_status.name == "payment_simplexcc_approved") {
-              var tradeHistoryData = await SimplexTradeHistoryModel
-                .query()
-                .select()
-                .first()
-                .where('id', tradeData[i].id)
-                .patch({
-                  simplex_payment_status: 2,
-                  is_processed: true
-                });
-
-              await module.exports.deleteEvent(data.events[j].event_id);
-
-              var referData = await ReferralModel
-                .query()
-                .first()
-                .where('deleted_at', null)
-                .andWhere('txid', tradeData[i].id)
-                .orderBy('id', 'DESC')
-
-              if (referData != undefined) {
-                let referredData = await module.exports.getReferredData(tradeHistoryData, tradeHistoryData.user_id, tradeData[i].id);
-              }
-            } else if (payment_status.name == "payment_simplexcc_declined") {
-              var tradeHistoryData = await SimplexTradeHistoryModel
-                .query()
-                .select()
-                .first()
-                .where('id', tradeData[i].id)
-                .patch({
-                  simplex_payment_status: 3,
-                  is_processed: true
-                });
+        if( data != undefined && (data.events).length > 0 ){
+          for (var j = 0; j < data.events.length; j++) {
+            var payment_data = JSON.stringify(data.events[j].payment);
+            payment_data = JSON.parse(payment_data);
+            var payment_status = data.events[j]
+            if (payment_data.id == tradeData[i].payment_id && payment_status.name == "payment_request_submitted") {
               await module.exports.deleteEvent(data.events[j].event_id)
+            } else if (payment_data.id == tradeData[i].payment_id) {
+              if (payment_status.name == "payment_simplexcc_approved") {
+                var tradeHistoryData = await SimplexTradeHistoryModel
+                  .query()
+                  .select()
+                  .first()
+                  .where('id', tradeData[i].id)
+                  .patch({
+                    simplex_payment_status: 2,
+                    is_processed: true
+                  });
+
+                await module.exports.deleteEvent(data.events[j].event_id);
+
+                var referData = await ReferralModel
+                  .query()
+                  .first()
+                  .where('deleted_at', null)
+                  .andWhere('txid', tradeData[i].id)
+                  .orderBy('id', 'DESC')
+
+                if (referData != undefined) {
+                  let referredData = await module.exports.getReferredData(tradeHistoryData, tradeHistoryData.user_id, tradeData[i].id);
+                }
+              } else if (payment_status.name == "payment_simplexcc_declined") {
+                var tradeHistoryData = await SimplexTradeHistoryModel
+                  .query()
+                  .select()
+                  .first()
+                  .where('id', tradeData[i].id)
+                  .patch({
+                    simplex_payment_status: 3,
+                    is_processed: true
+                  });
+                await module.exports.deleteEvent(data.events[j].event_id)
+              }
             }
           }
         }
+
       }
       await logger.info({
         "module": "Simplex Payment Status Update",
@@ -1016,9 +1022,10 @@ class CronController extends AppController {
         .andWhere('status', false)
         .andWhere('steps', 3)
         .orderBy('id', 'DESC');
+      console.log("pendingKYC....",pendingKYC);
       for (let index = 0; index < pendingKYC.length; index++) {
         const element = pendingKYC[index];
-        await module.exports.kycpicUpload(element);
+        // await module.exports.kycpicUpload(element);
       }
     } catch (error) {
       console.log(error);
