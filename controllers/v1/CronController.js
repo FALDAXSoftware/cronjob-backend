@@ -1025,7 +1025,7 @@ class CronController extends AppController {
       console.log("pendingKYC....",pendingKYC);
       for (let index = 0; index < pendingKYC.length; index++) {
         const element = pendingKYC[index];
-        // await module.exports.kycpicUpload(element);
+        await module.exports.kycpicUpload(element);
       }
     } catch (error) {
       console.log(error);
