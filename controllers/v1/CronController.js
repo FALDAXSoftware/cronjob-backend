@@ -302,7 +302,6 @@ class CronController extends AppController {
 
   // Function for decryting the encrypted Value
   async getDecryptData(keyValue) {
-    console.log(keyValue)
     await logger.info({
       "module": "Decryting the Data",
       "user_id": "user_decrypt",
@@ -725,6 +724,7 @@ class CronController extends AppController {
   // Check Simplex Payment Status for Each User
   async checkPaymentStatus() {
     try {
+      console.log("Checkpaytment");
       await logger.info({
         "module": "Simplex Payment Status Update",
         "user_id": "user_simplex",
@@ -734,64 +734,70 @@ class CronController extends AppController {
       var data = await module
         .exports
         .getEventData();
+      console.log("data",data)
       var tradeData = await SimplexTradeHistoryModel
         .query()
         .select()
         .where('deleted_at', null)
         .andWhere('trade_type', 3)
         .orderBy('id', 'DESC');
-
+      console.log("tradeData.length",tradeData.length);
       await logger.info({
         "module": "Simplex Payment Status Update",
         "user_id": "user_simplex",
         "url": "Cron Function",
         "type": "Success"
       }, data)
+
+      // return 1;
       for (var i = 0; i < tradeData.length; i++) {
-        for (var j = 0; j < data.events.length; j++) {
-          var payment_data = JSON.stringify(data.events[j].payment);
-          payment_data = JSON.parse(payment_data);
-          var payment_status = data.events[j]
-          if (payment_data.id == tradeData[i].payment_id && payment_status.name == "payment_request_submitted") {
-            await module.exports.deleteEvent(data.events[j].event_id)
-          } else if (payment_data.id == tradeData[i].payment_id) {
-            if (payment_status.name == "payment_simplexcc_approved") {
-              var tradeHistoryData = await SimplexTradeHistoryModel
-                .query()
-                .select()
-                .first()
-                .where('id', tradeData[i].id)
-                .patch({
-                  simplex_payment_status: 2,
-                  is_processed: true
-                });
-
-              await module.exports.deleteEvent(data.events[j].event_id);
-
-              var referData = await ReferralModel
-                .query()
-                .first()
-                .where('deleted_at', null)
-                .andWhere('txid', tradeData[i].id)
-                .orderBy('id', 'DESC')
-
-              if (referData != undefined) {
-                let referredData = await module.exports.getReferredData(tradeHistoryData, tradeHistoryData.user_id, tradeData[i].id);
-              }
-            } else if (payment_status.name == "payment_simplexcc_declined") {
-              var tradeHistoryData = await SimplexTradeHistoryModel
-                .query()
-                .select()
-                .first()
-                .where('id', tradeData[i].id)
-                .patch({
-                  simplex_payment_status: 3,
-                  is_processed: true
-                });
+        if( data != undefined && (data.events).length > 0 ){
+          for (var j = 0; j < data.events.length; j++) {
+            var payment_data = JSON.stringify(data.events[j].payment);
+            payment_data = JSON.parse(payment_data);
+            var payment_status = data.events[j]
+            if (payment_data.id == tradeData[i].payment_id && payment_status.name == "payment_request_submitted") {
               await module.exports.deleteEvent(data.events[j].event_id)
+            } else if (payment_data.id == tradeData[i].payment_id) {
+              if (payment_status.name == "payment_simplexcc_approved") {
+                var tradeHistoryData = await SimplexTradeHistoryModel
+                  .query()
+                  .select()
+                  .first()
+                  .where('id', tradeData[i].id)
+                  .patch({
+                    simplex_payment_status: 2,
+                    is_processed: true
+                  });
+
+                await module.exports.deleteEvent(data.events[j].event_id);
+
+                var referData = await ReferralModel
+                  .query()
+                  .first()
+                  .where('deleted_at', null)
+                  .andWhere('txid', tradeData[i].id)
+                  .orderBy('id', 'DESC')
+
+                if (referData != undefined) {
+                  let referredData = await module.exports.getReferredData(tradeHistoryData, tradeHistoryData.user_id, tradeData[i].id);
+                }
+              } else if (payment_status.name == "payment_simplexcc_declined") {
+                var tradeHistoryData = await SimplexTradeHistoryModel
+                  .query()
+                  .select()
+                  .first()
+                  .where('id', tradeData[i].id)
+                  .patch({
+                    simplex_payment_status: 3,
+                    is_processed: true
+                  });
+                await module.exports.deleteEvent(data.events[j].event_id)
+              }
             }
           }
         }
+
       }
       await logger.info({
         "module": "Simplex Payment Status Update",
@@ -925,7 +931,8 @@ class CronController extends AppController {
     }
     kycUploadDetails.bc = kyc_details.city;
     kycUploadDetails.bz = kyc_details.zip;
-    kycUploadDetails.dob = moment(kyc_details.dob, 'DD-MM-YYYY').format('YYYY-MM-DD');
+    // kycUploadDetails.dob = moment(kyc_details.dob, 'DD-MM-YYYY').format('YYYY-MM-DD');
+    kycUploadDetails.dob = kyc_details.dob;
 
     var idm_key = await module.exports.getDecryptData(process.env.IDM_TOKEN);
     request.post({
@@ -1015,6 +1022,7 @@ class CronController extends AppController {
         .andWhere('status', false)
         .andWhere('steps', 3)
         .orderBy('id', 'DESC');
+      console.log("pendingKYC....",pendingKYC);
       for (let index = 0; index < pendingKYC.length; index++) {
         const element = pendingKYC[index];
         await module.exports.kycpicUpload(element);
