@@ -44,9 +44,9 @@ var cronData = require("../controllers/v1/CronController");
 // });
 
 cron.schedule('* * * * *', async (req, res, next) => {
-    await cronData.sendResidualReceiveFunds();
+    // await cronData.sendResidualReceiveFunds();
 });
 
-// cron.schedule('0 7 * * *', async (req, res, next) => {
-//     await cronData.sendResidualSendFunds();
-// });
+cron.schedule('* * * * *', async (req, res, next) => {
+    // await cronData.sendResidualSendFunds();
+});
