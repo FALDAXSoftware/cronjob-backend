@@ -1058,10 +1058,12 @@ class CronController extends AppController {
       json: true
     }, async function (error, response, body) {
       try {
-        let coins = await Coins.find({
-          deleted_at: null,
-          is_active: true
-        });
+        let coins = await Coins
+          .query()
+          .where('deleted_at', null)
+          .andWhere('is_active',true)
+          .orderBy('id', 'DESC');
+
         let coinArray = [];
         for (let index = 0; index < coins.length; index++) {
           const element = coins[index];
