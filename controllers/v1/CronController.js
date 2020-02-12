@@ -37,6 +37,7 @@ var Wallet = require('../../models/Wallet');
 var ReferralModel = require('../../models/Referral');
 var KYCModel = require('../../models/KYC');
 var TempCoinmarketcap = require('../../models/TempCoinMarketCap');
+var CurrencyConversionModel = require('../../models/CurrencyConversion');
 var TransactionTableModel = require('../../models/TransactionTable');
 var residualTransactionModel = require('../../models/ResidualTransactions');
 
@@ -734,14 +735,14 @@ class CronController extends AppController {
       var data = await module
         .exports
         .getEventData();
-      console.log("data",data)
+      console.log("data", data)
       var tradeData = await SimplexTradeHistoryModel
         .query()
         .select()
         .where('deleted_at', null)
         .andWhere('trade_type', 3)
         .orderBy('id', 'DESC');
-      console.log("tradeData.length",tradeData.length);
+      console.log("tradeData.length", tradeData.length);
       await logger.info({
         "module": "Simplex Payment Status Update",
         "user_id": "user_simplex",
@@ -751,7 +752,7 @@ class CronController extends AppController {
 
       // return 1;
       for (var i = 0; i < tradeData.length; i++) {
-        if( data != undefined && (data.events).length > 0 ){
+        if (data != undefined && (data.events).length > 0) {
           for (var j = 0; j < data.events.length; j++) {
             var payment_data = JSON.stringify(data.events[j].payment);
             payment_data = JSON.parse(payment_data);
@@ -1022,7 +1023,7 @@ class CronController extends AppController {
         .andWhere('status', false)
         .andWhere('steps', 3)
         .orderBy('id', 'DESC');
-      console.log("pendingKYC....",pendingKYC);
+      console.log("pendingKYC....", pendingKYC);
       for (let index = 0; index < pendingKYC.length; index++) {
         const element = pendingKYC[index];
         await module.exports.kycpicUpload(element);
@@ -1057,8 +1058,18 @@ class CronController extends AppController {
       json: true
     }, async function (error, response, body) {
       try {
+        let coins = await Coins.find({
+          deleted_at: null,
+          is_active: true
+        });
+        let coinArray = [];
+        for (let index = 0; index < coins.length; index++) {
+          const element = coins[index];
+          coinArray.push(element.coin)
+        }
         var resData = body.data
         for (var i = 0; i < resData.length; i++) {
+          // Store in Temp Table
           let price_object = {
             coin: resData[i].symbol,
             price: resData[i].quote.USD.price,
@@ -1071,6 +1082,51 @@ class CronController extends AppController {
           let accountClass = await TempCoinmarketcap
             .query()
             .insert(price_object);
+
+          // Update Currency conversion table
+          if (coinArray.includes(currencyData.data[i].symbol)) {
+            let existCurrencyData = await CurrencyConversionModel
+              .query()
+              .first()
+              .where('deleted_at', null)
+              .andWhere('symbol', currencyData.data[i].symbol)
+              .orderBy('id', 'DESC');
+            if (existCurrencyData) {
+              // var currency_data = await CurrencyConversionModel
+              //   .update({
+              //     coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id
+              //   })
+              //   .set({
+              //     quote: currencyData.data[i].quote
+              //   })
+              //   .fetch();
+              var currency_data = await CurrencyConversionModel
+                .query()
+                .first()
+                .where('coin_id', coins[coinArray.indexOf(currencyData.data[i].symbol)].id)
+                .patch({
+                  "quote": currencyData.data[i].quote
+                });
+            } else {
+              // var currency_data = await CurrencyConversionModel
+              //   .create({
+              //     coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id,
+              //     quote: currencyData.data[i].quote,
+              //     symbol: currencyData.data[i].symbol,
+              //     created_at: new Date()
+              //   })
+              //   .fetch();
+              var currency_data = await CurrencyConversionModel
+                .query()
+                .insert({
+                  coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id,
+                  quote: currencyData.data[i].quote,
+                  symbol: currencyData.data[i].symbol,
+                  created_at: new Date()
+                });
+            }
+          }
+
         }
         await logger.info({
           "module": "Cron CoinMarket Cap",
