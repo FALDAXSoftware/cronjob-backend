@@ -37,6 +37,7 @@ var Wallet = require('../../models/Wallet');
 var ReferralModel = require('../../models/Referral');
 var KYCModel = require('../../models/KYC');
 var TempCoinmarketcap = require('../../models/TempCoinMarketCap');
+var CurrencyConversionModel = require('../../models/CurrencyConversion');
 var TransactionTableModel = require('../../models/TransactionTable');
 var residualTransactionModel = require('../../models/ResidualTransactions');
 
@@ -308,10 +309,10 @@ class CronController extends AppController {
       "url": "Cron Function",
       "type": "Enter"
     }, "Entering the function")
-    // var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
-    // var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
-    var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-    var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
+    var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
+    var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
+    // var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    // var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
 
     // When ready to decrypt the hex string, convert it back to bytes
     var encryptedBytes = aesjs
@@ -734,14 +735,14 @@ class CronController extends AppController {
       var data = await module
         .exports
         .getEventData();
-      console.log("data",data)
+      console.log("data", data)
       var tradeData = await SimplexTradeHistoryModel
         .query()
         .select()
         .where('deleted_at', null)
         .andWhere('trade_type', 3)
         .orderBy('id', 'DESC');
-      console.log("tradeData.length",tradeData.length);
+      console.log("tradeData.length", tradeData.length);
       await logger.info({
         "module": "Simplex Payment Status Update",
         "user_id": "user_simplex",
@@ -751,7 +752,7 @@ class CronController extends AppController {
 
       // return 1;
       for (var i = 0; i < tradeData.length; i++) {
-        if( data != undefined && (data.events).length > 0 ){
+        if (data != undefined && (data.events).length > 0) {
           for (var j = 0; j < data.events.length; j++) {
             var payment_data = JSON.stringify(data.events[j].payment);
             payment_data = JSON.parse(payment_data);
@@ -1022,7 +1023,7 @@ class CronController extends AppController {
         .andWhere('status', false)
         .andWhere('steps', 3)
         .orderBy('id', 'DESC');
-      console.log("pendingKYC....",pendingKYC);
+      console.log("pendingKYC....", pendingKYC);
       for (let index = 0; index < pendingKYC.length; index++) {
         const element = pendingKYC[index];
         await module.exports.kycpicUpload(element);
@@ -1057,8 +1058,18 @@ class CronController extends AppController {
       json: true
     }, async function (error, response, body) {
       try {
+        let coins = await Coins.find({
+          deleted_at: null,
+          is_active: true
+        });
+        let coinArray = [];
+        for (let index = 0; index < coins.length; index++) {
+          const element = coins[index];
+          coinArray.push(element.coin)
+        }
         var resData = body.data
         for (var i = 0; i < resData.length; i++) {
+          // Store in Temp Table
           let price_object = {
             coin: resData[i].symbol,
             price: resData[i].quote.USD.price,
@@ -1071,6 +1082,51 @@ class CronController extends AppController {
           let accountClass = await TempCoinmarketcap
             .query()
             .insert(price_object);
+
+          // Update Currency conversion table
+          if (coinArray.includes(currencyData.data[i].symbol)) {
+            let existCurrencyData = await CurrencyConversionModel
+              .query()
+              .first()
+              .where('deleted_at', null)
+              .andWhere('symbol', currencyData.data[i].symbol)
+              .orderBy('id', 'DESC');
+            if (existCurrencyData) {
+              // var currency_data = await CurrencyConversionModel
+              //   .update({
+              //     coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id
+              //   })
+              //   .set({
+              //     quote: currencyData.data[i].quote
+              //   })
+              //   .fetch();
+              var currency_data = await CurrencyConversionModel
+                .query()
+                .first()
+                .where('coin_id', coins[coinArray.indexOf(currencyData.data[i].symbol)].id)
+                .patch({
+                  "quote": currencyData.data[i].quote
+                });
+            } else {
+              // var currency_data = await CurrencyConversionModel
+              //   .create({
+              //     coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id,
+              //     quote: currencyData.data[i].quote,
+              //     symbol: currencyData.data[i].symbol,
+              //     created_at: new Date()
+              //   })
+              //   .fetch();
+              var currency_data = await CurrencyConversionModel
+                .query()
+                .insert({
+                  coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id,
+                  quote: currencyData.data[i].quote,
+                  symbol: currencyData.data[i].symbol,
+                  created_at: new Date()
+                });
+            }
+          }
+
         }
         await logger.info({
           "module": "Cron CoinMarket Cap",
@@ -1103,14 +1159,14 @@ class CronController extends AppController {
         .andWhere('coin_code', coin)
         .orderBy('id', 'DESC');
 
-      if ((coin != 'eth' && coin != 'xrp') && (coin != 'teth' && coin != 'txrp')) {
+      if ((coin != 'eth' && coin != 'xrp' && coinData.iserc != true) && (coin != 'teth' && coin != 'txrp' && coinData.iserc != true)) {
         var recipients = [
           {
             "amount": parseFloat((amount * 1e8).toFixed(process.env.TOTAL_PRECISION)),
             "address": address
           }
         ];
-      } else if ((coin == "eth") || (coin == "teth")) {
+      } else if ((coin == "eth") || (coin == "teth" || coinData.iserc == true)) {
         var recipients = [
           {
             "amount": (amount).toString(),
@@ -1151,7 +1207,7 @@ class CronController extends AppController {
           }
           console.log(body);
           var feeValue;
-          if (coin == "eth" || coin == "teth") {
+          if (coin == "eth" || coin == "teth" || coinData.iserc == true) {
             let gasLimit = body.gasLimit;
             let gasPrice = body.gasPrice;
             gasPrice = parseFloat(gasPrice / 1e9).toFixed(8);
@@ -1199,10 +1255,10 @@ class CronController extends AppController {
               passphrase_value = process.env.BITGO_BTC_WARM_WALLET_PASSPHRASE;
               console.log("In warm_wallet_address");
             } else if (coinData.hot_send_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_BTC_HOT_SEND_WALLET_PASSPHRASE;
+              passphrase_value = process.env.BITGO_BTC_HOT_RECEIVE_WALLET_PASSPHRASE;
               console.log("In hot_send_wallet_address");
             } else if (coinData.hot_receive_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_BTC_HOT_RECEIVE_WALLET_PASSPHRASE;
+              passphrase_value = process.env.BITGO_BTC_HOT_SEND_WALLET_PASSPHRASE;
               console.log("In hot_receive_wallet_address");
             } else if (coinData.custody_wallet_address == walletId) {
               passphrase_value = process.env.BITGO_PASSPHRASE;
@@ -1237,7 +1293,7 @@ class CronController extends AppController {
               passphrase_value = process.env.BITGO_PASSPHRASE;
               console.log("In custody_wallet_address");
             }
-          } else if (coin == "eth") { // ETH
+          } else if (coin == "eth" || coinData.iserc == true) { // ETH
             if (coinData.warm_wallet_address == walletId) {
               passphrase_value = process.env.BITGO_ETH_WARM_WALLET_PASSPHRASE;
               console.log("In warm_wallet_address");
@@ -1267,10 +1323,10 @@ class CronController extends AppController {
         };
 
         send_data.amount = parseFloat(amount);
-        if (coin == "txrp" || coin == "xrp" || coin == "teth" || coin == "eth") {
+        if (coin == "txrp" || coin == "xrp" || coin == "teth" || coin == "eth" || coinData.iserc == true) {
           send_data.amount = (amount).toString();
         }
-        if (coin != "txrp" && coin != "xrp" && coin != "teth" && coin != "eth") {
+        if (coin != "txrp" && coin != "xrp" && coin != "teth" && coin != "eth" && coinData.iserc != true) {
           if (inputs.feeRate && feeRate > 0) {
             send_data.feeRate = feeRate;
             // send_data.fee = inputs.feeRate;
@@ -1352,7 +1408,7 @@ class CronController extends AppController {
 
     if (coinData && coinData != undefined && coinData.length > 0) {
       for (var i = 0; i < coinData.length; i++) {
-        if (coinData[i].coin_code != "terc" && coinData[i].coin_code != "SUSU") {
+        if (coinData[i].coin_code != "SUSU") {
           console.log("coinData[i]", coinData[i]);
           if (coinData[i].hot_receive_wallet_address != null) {
             var data = await module.exports.getWalletData(coinData[i].hot_receive_wallet_address, coinData[i].coin_code)
@@ -1384,7 +1440,7 @@ class CronController extends AppController {
                 .where('deleted_at', null)
                 .andWhere('slug', 'btc_static_fees')
                 .orderBy('id', 'DESC');
-            } else if (coinData[i].coin_code == 'eth' || coinData[i].coin_code == 'teth') {
+            } else if (coinData[i].coin_code == 'eth' || coinData[i].coin_code == 'teth' || coinData[i].iserc == true) {
               thresholdValue = await AdminSettingModel
                 .query()
                 .first()
@@ -1437,13 +1493,13 @@ class CronController extends AppController {
             console.log("coinData[i].coin_code", coinData[i].coin_code);
             console.log("data", data);
 
-            if ((data.balance && data.balance != undefined) || (data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "teth" && coinData[i].coin_code != "eth")) || ((data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "txrp" && coinData[i].coin_code != "xrp")))) {
+            if ((data.balance && data.balance != undefined) || (data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "teth" && coinData[i].coin_code != "eth")) || ((data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "txrp" && coinData[i].coin_code != "xrp"))) || ((data.balanceString && data.balanceString != undefined && (coinData[i].iserc != true)))) {
               var amount = (coinData[i].coin_code != 'teth' && coinData[i].coin_code != 'eth' && coinData[i].coin_code != 'txrp' && coinData[i].coin_code != 'xrp') ? (data.balance) : data.balanceString;
               var exactSendAmount = 0.0;
               var feeRateValue;
               var estimateFee = 0.0
               var feeValue = 0.0
-              if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth") {
+              if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth" || coinData[i].iserc == true) {
                 console.log("coinData[i].coin_code, (amount), warmWalletData.receiveAddress.address", coinData[i].coin_code, (amount), warmWalletData.receiveAddress.address)
                 var reposneData = await module
                   .exports
@@ -1489,9 +1545,9 @@ class CronController extends AppController {
 
                   await cronSend("After Send Transaction Receive");
                   var division = 1e8;
-                  if ((coinData[i].coin_code != "teth" && coinData[i].coin_code != 'txrp') && coinData[i].coin_code != "eth" && coinData[i].coin_code != 'xrp') {
+                  if ((coinData[i].coin_code != "teth" && coinData[i].coin_code != 'txrp') && coinData[i].coin_code != "eth" && coinData[i].coin_code != 'xrp' && coinData[i].iserc != true) {
                     exactSendAmount = parseFloat(exactSendAmount / 1e8).toFixed(8)
-                  } else if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth") {
+                  } else if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth" || coinData[i].iserc == true) {
                     exactSendAmount = parseFloat(exactSendAmount / 1e18).toFixed(8)
                     division = 1e18;
                   } else if (coinData[i].coin_code == "xrp" || coinData[i].coin_code == "txrp") {
@@ -1562,7 +1618,7 @@ class CronController extends AppController {
 
     if (coinData && coinData != undefined && coinData.length > 0) {
       for (var i = 0; i < coinData.length; i++) {
-        if (coinData[i].coin_code != "terc" && coinData[i].coin_code != "SUSU") {
+        if ( coinData[i].coin_code != "SUSU") {
           console.log("coinData[i]", coinData[i]);
           if (coinData[i].hot_send_wallet_address != null) {
             var data = await module.exports.getWalletData(coinData[i].hot_send_wallet_address, coinData[i].coin_code)
@@ -1594,7 +1650,7 @@ class CronController extends AppController {
                 .where('deleted_at', null)
                 .andWhere('slug', 'btc_static_fees')
                 .orderBy('id', 'DESC');
-            } else if (coinData[i].coin_code == 'eth' || coinData[i].coin_code == 'teth') {
+            } else if (coinData[i].coin_code == 'eth' || coinData[i].coin_code == 'teth' || coinData[i].iserc == true) {
               thresholdValue = await AdminSettingModel
                 .query()
                 .first()
@@ -1646,14 +1702,14 @@ class CronController extends AppController {
             console.log("feesValue", feesValue);
             console.log("coinData[i].coin_code", coinData[i].coin_code);
             console.log("data", data);
-            if (coinData[i].coin_code == 'txrp' || coinData[i].coin_code == 'xrp' || coinData[i].coin_code == 'teth' || coinData[i].coin_code == 'eth') {
-              if ((data.balance && data.balance != undefined) || (data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "teth" && coinData[i].coin_code != "eth")) || ((data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "txrp" && coinData[i].coin_code != "xrp")))) {
+            if (coinData[i].coin_code == 'txrp' || coinData[i].coin_code == 'xrp' || coinData[i].coin_code == 'teth' || coinData[i].coin_code == 'eth' || coinData[i].iserc == true) {
+              if ((data.balance && data.balance != undefined) || (data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "teth" && coinData[i].coin_code != "eth")) || ((data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "txrp" && coinData[i].coin_code != "xrp"))) || ((data.balanceString && data.balanceString != undefined && (coinData[i].iserc != true)))) {
                 var amount = (coinData[i].coin_code != 'teth' && coinData[i].coin_code != 'eth' && coinData[i].coin_code != 'txrp' && coinData[i].coin_code != 'xrp') ? (data.balance) : data.balanceString;
                 var exactSendAmount = 0.0;
                 var feeRateValue;
                 var estimateFee = 0.0
                 var feeValue = 0.0
-                if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth") {
+                if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth" || coinData[i].iserc == true) {
                   console.log("coinData[i].coin_code, (amount), warmWalletData.receiveAddress.address", coinData[i].coin_code, (amount), warmWalletData.receiveAddress.address)
                   var reposneData = await module
                     .exports
@@ -1696,9 +1752,9 @@ class CronController extends AppController {
                     console.log(sendTransaction);
                     await cronSend("After Send Send");
                     var division = 1e8;
-                    if ((coinData[i].coin_code != "teth" && coinData[i].coin_code != 'txrp') && coinData[i].coin_code != "eth" && coinData[i].coin_code != 'xrp') {
+                    if ((coinData[i].coin_code != "teth" && coinData[i].coin_code != 'txrp') && coinData[i].coin_code != "eth" && coinData[i].coin_code != 'xrp' && coinData[i].iserc != true) {
                       exactSendAmount = parseFloat(exactSendAmount / 1e8).toFixed(8)
-                    } else if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth") {
+                    } else if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth" || coinData[i].iserc == true) {
                       exactSendAmount = parseFloat(exactSendAmount / 1e18).toFixed(8)
                       division = 1e18;
                     } else if (coinData[i].coin_code == "xrp" || coinData[i].coin_code == "txrp") {
