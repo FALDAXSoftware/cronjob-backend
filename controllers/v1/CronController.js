@@ -309,10 +309,10 @@ class CronController extends AppController {
       "url": "Cron Function",
       "type": "Enter"
     }, "Entering the function")
-    // var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
-    // var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
-    var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-    var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
+    var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
+    var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
+    // var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    // var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
 
     // When ready to decrypt the hex string, convert it back to bytes
     var encryptedBytes = aesjs
@@ -1086,12 +1086,12 @@ class CronController extends AppController {
             .insert(price_object);
 
           // Update Currency conversion table
-          if (coinArray.includes(currencyData.data[i].symbol)) {
+          if (coinArray.includes(resData[i].symbol)) {
             let existCurrencyData = await CurrencyConversionModel
               .query()
               .first()
               .where('deleted_at', null)
-              .andWhere('symbol', currencyData.data[i].symbol)
+              .andWhere('symbol', resData[i].symbol)
               .orderBy('id', 'DESC');
             if (existCurrencyData) {
               // var currency_data = await CurrencyConversionModel
@@ -1105,9 +1105,9 @@ class CronController extends AppController {
               var currency_data = await CurrencyConversionModel
                 .query()
                 .first()
-                .where('coin_id', coins[coinArray.indexOf(currencyData.data[i].symbol)].id)
+                .where('coin_id', coins[coinArray.indexOf(resData[i].symbol)].id)
                 .patch({
-                  "quote": currencyData.data[i].quote
+                  "quote": resData[i].quote
                 });
             } else {
               // var currency_data = await CurrencyConversionModel
@@ -1121,9 +1121,9 @@ class CronController extends AppController {
               var currency_data = await CurrencyConversionModel
                 .query()
                 .insert({
-                  coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id,
-                  quote: currencyData.data[i].quote,
-                  symbol: currencyData.data[i].symbol,
+                  coin_id: coins[coinArray.indexOf(resData[i].symbol)].id,
+                  quote: resData[i].quote,
+                  symbol: resData[i].symbol,
                   created_at: new Date()
                 });
             }
