@@ -1,0 +1,19 @@
+replicaCount: 1
+image:
+  repository: 100.69.158.196/cronjob
+  tag: latest
+  pullPolicy: IfNotPresent
+
+resources: {}
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # requests:
+  #  cpu: 100m
+  #  memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
