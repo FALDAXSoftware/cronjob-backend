@@ -92,7 +92,7 @@ class CronController extends AppController {
           const element = items[index];
           let records = await NewsModel
             .query()
-            .where('title', element.title)
+            .where('link', element.link)
             .orderBy('id', 'DESC');
 
           if (records.length == 0) {
@@ -149,7 +149,7 @@ class CronController extends AppController {
           let records = await NewsModel
             .query()
             .where({
-              'title': element.title
+              'link': element.link
             })
             .orderBy('id', 'DESC');
 
@@ -215,7 +215,7 @@ class CronController extends AppController {
           let records = await NewsModel
             .query()
             .where({
-              'title': element.title
+              'link': element.link
             })
             .orderBy('id', 'DESC');
 
