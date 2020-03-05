@@ -7,7 +7,7 @@ var cronData = require("../controllers/v1/CronController");
 cron.schedule('* * * * *', async (req, res, next) => {
     console.log("Started cron....");
     await cronData.bitcoinistNewsUpdate();
-    await cronData.bitcoinistNewsUpdate();
+    await cronData.bitcoinNews();
     await cronData.coinTelegraph();
 });
 
@@ -43,10 +43,10 @@ cron.schedule('* * * * *', async (req, res, next) => {
     await cronData.checkPaymentStatus();
 });
 
-cron.schedule('0 7 * * *', async (req, res, next) => {
-    await cronData.sendResidualReceiveFunds();
-});
+// cron.schedule('0 7 * * *', async (req, res, next) => {
+//     await cronData.sendResidualReceiveFunds();
+// });
 
-cron.schedule('0 7 * * *', async (req, res, next) => {
-    await cronData.sendResidualSendFunds();
-});
+// cron.schedule('0 7 * * *', async (req, res, next) => {
+//     await cronData.sendResidualSendFunds();
+// });
