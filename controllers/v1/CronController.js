@@ -951,7 +951,7 @@ class CronController extends AppController {
           .where('id', kyc_details.id)
           .patch({
             'direct_response': response.body.res,
-            'webhook_response': null,
+            'webhook_response': (response.body.res == "ACCEPT") ? (response.body.res) : null,
             'mtid': response.body.mtid,
             'comments': response.body.frd,
             'status': true,
