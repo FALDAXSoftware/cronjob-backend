@@ -18,7 +18,7 @@ cron.schedule('* * * * *', async (req, res, next) => {
 })
 
 cron.schedule('* * * * *', async (req, res, next) => {
-    await cronData.checkTheresoldNotification();
+    // await cronData.checkTheresoldNotification();
 });
 
 
