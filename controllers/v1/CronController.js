@@ -998,6 +998,11 @@ class CronController extends AppController {
             } else { }
           })
         }
+        // Send Email
+        if( response.body.res == "ACCEPT" ){
+          await module.exports.email("kyc_approved", user)
+        }
+
         await logger.info({
           "module": "Customer ID Verification",
           "user_id": "user_kyc",
