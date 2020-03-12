@@ -93,7 +93,7 @@ class CronController extends AppController {
           const element = items[index];
           let records = await NewsModel
             .query()
-            .where('title', element.title)
+            .where('link', element.link)
             .orderBy('id', 'DESC');
 
           if (records.length == 0) {
@@ -150,7 +150,7 @@ class CronController extends AppController {
           let records = await NewsModel
             .query()
             .where({
-              'title': element.title
+              'link': element.link
             })
             .orderBy('id', 'DESC');
 
@@ -216,7 +216,7 @@ class CronController extends AppController {
           let records = await NewsModel
             .query()
             .where({
-              'title': element.title
+              'link': element.link
             })
             .orderBy('id', 'DESC');
 
@@ -310,10 +310,12 @@ class CronController extends AppController {
       "url": "Cron Function",
       "type": "Enter"
     }, "Entering the function")
-    var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
-    var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
+    // var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
+    // var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
     // var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
     // var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
+    var key = JSON.parse(process.env.SECRET_KEY);
+    var iv = JSON.parse(process.env.SECRET_IV);
 
     // When ready to decrypt the hex string, convert it back to bytes
     var encryptedBytes = aesjs
@@ -990,6 +992,11 @@ class CronController extends AppController {
             } else { }
           })
         }
+        // Send Email
+        if (response.body.res == "ACCEPT") {
+          await module.exports.email("kyc_approved", user)
+        }
+
         await logger.info({
           "module": "Customer ID Verification",
           "user_id": "user_kyc",
@@ -1057,785 +1064,772 @@ class CronController extends AppController {
       "url": "Cron Function",
       "type": "Enter"
     }, "Entering the function")
-    // var keyValue = await module.exports.getDecryptData(process.env.COINMARKETCAP_MARKETPRICE)
-    // await request({
-    //   url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20',
-    //   method: "GET",
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'X-CMC_PRO_API_KEY': keyValue
-    //   },
-    //   json: true
-    // }, async function (error, response, body) {
-    //   try {
-    //     let coins = await Coins.find({
-    //       deleted_at: null,
-    //       is_active: true
-    //     });
-    //     let coinArray = [];
-    //     for (let index = 0; index < coins.length; index++) {
-    //       const element = coins[index];
-    //       coinArray.push(element.coin)
-    //     }
-    //     var resData = body.data
-    //     for (var i = 0; i < resData.length; i++) {
-    //       // Store in Temp Table
-    //       let price_object = {
-    //         coin: resData[i].symbol,
-    //         price: resData[i].quote.USD.price,
-    //         market_cap: resData[i].quote.USD.market_cap,
-    //         percent_change_1h: resData[i].quote.USD.percent_change_1h,
-    //         percent_change_24h: resData[i].quote.USD.percent_change_24h,
-    //         percent_change_7d: resData[i].quote.USD.percent_change_7d,
-    //         volume_24h: resData[i].quote.USD.volume_24h
-    //       };
-    //       let accountClass = await TempCoinmarketcap
-    //         .query()
-    //         .insert(price_object);
-
-    //       // Update Currency conversion table
-    //       if (coinArray.includes(currencyData.data[i].symbol)) {
-    //         let existCurrencyData = await CurrencyConversionModel
-    //           .query()
-    //           .first()
-    //           .where('deleted_at', null)
-    //           .andWhere('symbol', currencyData.data[i].symbol)
-    //           .orderBy('id', 'DESC');
-    //         if (existCurrencyData) {
-    //           // var currency_data = await CurrencyConversionModel
-    //           //   .update({
-    //           //     coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id
-    //           //   })
-    //           //   .set({
-    //           //     quote: currencyData.data[i].quote
-    //           //   })
-    //           //   .fetch();
-    //           var currency_data = await CurrencyConversionModel
-    //             .query()
-    //             .first()
-    //             .where('coin_id', coins[coinArray.indexOf(currencyData.data[i].symbol)].id)
-    //             .patch({
-    //               "quote": currencyData.data[i].quote
-    //             });
-    //         } else {
-    //           // var currency_data = await CurrencyConversionModel
-    //           //   .create({
-    //           //     coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id,
-    //           //     quote: currencyData.data[i].quote,
-    //           //     symbol: currencyData.data[i].symbol,
-    //           //     created_at: new Date()
-    //           //   })
-    //           //   .fetch();
-    //           var currency_data = await CurrencyConversionModel
-    //             .query()
-    //             .insert({
-    //               coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id,
-    //               quote: currencyData.data[i].quote,
-    //               symbol: currencyData.data[i].symbol,
-    //               created_at: new Date()
-    //             });
-    //         }
-    //       }
-
-    //     }
-    //     await logger.info({
-    //       "module": "Cron CoinMarket Cap",
-    //       "user_id": "user_marketcap",
-    //       "url": "Cron Function",
-    //       "type": "Success"
-    //     }, "CoinMarketCap Updated successfully")
-    //   } catch (error) {
-    //     console.log('error', error);
-    //     await logger.error({
-    //       "module": "Cron CoinMarket Cap",
-    //       "user_id": "user_marketcap",
-    //       "url": "Cron Function",
-    //       "type": "Error"
-    //     }, error)
-    //   }
-    // })
-
-    var coinData = await Coins
-      .query()
-      .select('coin_name', 'coin_code', 'coin')
-      .where('is_active', true)
-      .andWhere('deleted_at', null)
-      .orderBy('id', 'ASC');
-
-    console.log("coinData ", coinData)
-
-    var currency = ['USD', 'EUR', 'INR']
-    var object = {}
-    for (var i = 0; i < coinData.length; i++) {
-      for (var j = 0; j < currency.length; j++) {
-        var dataValue = await currencyConversionHelper.convertValue(coinData[i].coin_name, currency[j])
-        dataValue = JSON.stringify(dataValue)
-        console.log(dataValue)
-        dataValue = JSON.parse(dataValue)
-        console.log("data value" + dataValue['USD'] + " for coin " + coinData[i].coin_name)
-        var value = currency[j]
-        value = {
-          "price": dataValue.current_price,
-          "price_change_24h": dataValue.price_change_24h,
-          "percent_change_24h": dataValue.price_change_percentage_24h
-        }
-        object.push()
-      }
-    }
-  }
-
-  // Function for getting the network Fee Value
-  async getNetworkFee(coin, walletId, amount, address) {
-    return new Promise(async (resolve, reject) => {
-      console.log("coin, walletId, amount, address", coin, walletId, amount, address)
-      var coinData = await Coins
-        .query()
-        .select()
-        .first()
-        .where('deleted_at', null)
-        .andWhere('is_active', true)
-        .andWhere('coin_code', coin)
-        .orderBy('id', 'DESC');
-
-      if ((coin != 'eth' && coin != 'xrp') && (coin != 'teth' && coin != 'txrp')) {
-        var recipients = [
-          {
-            "amount": parseFloat((amount * 1e8).toFixed(process.env.TOTAL_PRECISION)),
-            "address": address
-          }
-        ];
-      } else if ((coin == "eth") || (coin == "teth")) {
-        var recipients = [
-          {
-            "amount": (amount).toString(),
-            "address": address
-          }
-        ];
-      } else if ((coin == 'xrp') || (coin == 'txrp')) {
-        var recipients = [
-          {
-            "amount": (amount).toString(),
-            "address": address
-          }
-        ];
-      }
-      console.log("recipients", recipients)
-      if (coinData != undefined) {
-        var access_token_value = await module.exports.getDecryptData(process.env.BITGO_ACCESS_TOKEN);
-        var enterprise_value = await module.exports.getDecryptData(process.env.BITGO_ENTERPRISE);
-        await request({
-          url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}/tx/build`,
-          method: "POST",
-          headers: {
-            // 'cache-control': 'no-cache',
-            Authorization: `Bearer ${access_token_value}`,
-            'Content-Type': 'application/json',
-            'enterprise_id': enterprise_value
-          },
-          body: {
-            "recipients": recipients
-          },
-          json: true
-        }, function (err, httpResponse, body) {
-          if (err) {
-            resolve(err);
-          }
-          if (body.error) {
-            resolve(body);
-          }
-          console.log(body);
-          var feeValue;
-          if (coin == "eth" || coin == "teth") {
-            let gasLimit = body.gasLimit;
-            let gasPrice = body.gasPrice;
-            gasPrice = parseFloat(gasPrice / 1e9).toFixed(8);
-            feeValue = parseFloat(gasPrice) * parseFloat(gasLimit)
-            feeValue = parseFloat(feeValue / 1e9).toFixed(8)
-          } else if (coin == 'xrp' || coin == 'txrp') {
-            feeValue = body.txInfo.Fee
-            feeValue = (feeValue / 1e6).toFixed(8)
-          } else {
-            feeValue = body.feeInfo
-          }
-          resolve(feeValue);
-        });
-      } else {
-        resolve("Coin Not Found")
-      }
-    })
-  }
-
-  // Send the Amount
-  async send(address, amount, feeRate, coin, walletId) {
-    return new Promise(async (resolve, reject) => {
+    var keyValue = await module.exports.getDecryptData(process.env.COINMARKETCAP_MARKETPRICE)
+    await request({
+      url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20',
+      method: "GET",
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CMC_PRO_API_KEY': keyValue
+      },
+      json: true
+    }, async function (error, response, body) {
       try {
-        console.log("address", address);
-        console.log("amount", amount);
-        console.log("feeRate", feeRate);
-        console.log("coin", coin);
-        console.log("walletId", walletId);
-        var access_token_value = await this.getDecryptData(process.env.BITGO_ACCESS_TOKEN);
-        // var passphrase_value = await this.getDecryptData(process.env.BITGO_PASSPHRASE);
-        var passphrase_value = process.env.BITGO_PASSPHRASE;
-
-        var coinData = await Coins
+        let coins = await Coins
           .query()
-          .select()
-          .first()
           .where('deleted_at', null)
           .andWhere('is_active', true)
-          .andWhere('coin_code', coin)
           .orderBy('id', 'DESC');
-        console.log("coindata", coinData);
-        if (coinData && coinData != undefined) {
-          if (coin == "btc") { // BTC
-            if (coinData.warm_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_BTC_WARM_WALLET_PASSPHRASE;
-              console.log("In warm_wallet_address");
-            } else if (coinData.hot_send_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_BTC_HOT_SEND_WALLET_PASSPHRASE;
-              console.log("In hot_send_wallet_address");
-            } else if (coinData.hot_receive_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_BTC_HOT_RECEIVE_WALLET_PASSPHRASE;
-              console.log("In hot_receive_wallet_address");
-            } else if (coinData.custody_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_PASSPHRASE;
-              console.log("In custody_wallet_address");
-            }
-            passphrase_value = process.env.BITGO_BTC_HOT_SEND_WALLET_PASSPHRASE;
-          } else if (coin == "ltc") { // LTC
-            if (coinData.warm_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_LTC_WARM_WALLET_PASSPHRASE;
-              console.log("In warm_wallet_address");
-            } else if (coinData.hot_send_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_LTC_HOT_SEND_WALLET_PASSPHRASE;
-              console.log("In hot_send_wallet_address");
-            } else if (coinData.hot_receive_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_LTC_HOT_RECEIVE_WALLET_PASSPHRASE;
-              console.log("In hot_receive_wallet_address LTC");
-            } else if (coinData.custody_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_PASSPHRASE;
-              console.log("In custody_wallet_address");
-            }
-          } else if (coin == "xrp") { // XRP
-            if (coinData.warm_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_XRP_WARM_WALLET_PASSPHRASE;
-              console.log("In warm_wallet_address");
-            } else if (coinData.hot_send_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_XRP_HOT_SEND_WALLET_PASSPHRASE;
-              console.log("In hot_send_wallet_address");
-            } else if (coinData.hot_receive_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_XRP_HOT_RECEIVE_WALLET_PASSPHRASE;
-              console.log("In hot_receive_wallet_address LTC");
-            } else if (coinData.custody_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_PASSPHRASE;
-              console.log("In custody_wallet_address");
-            }
-          } else if (coin == "eth") { // ETH
-            if (coinData.warm_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_ETH_WARM_WALLET_PASSPHRASE;
-              console.log("In warm_wallet_address");
-            } else if (coinData.hot_send_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_ETH_HOT_SEND_WALLET_PASSPHRASE;
-              console.log("In hot_send_wallet_address");
-            } else if (coinData.hot_receive_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_ETH_HOT_RECEIVE_WALLET_PASSPHRASE;
-              console.log("In hot_receive_wallet_address LTC");
-            } else if (coinData.custody_wallet_address == walletId) {
-              passphrase_value = process.env.BITGO_PASSPHRASE;
-              console.log("In custody_wallet_address");
-            }
-          } else {
-            passphrase_value = process.env.BITGO_PASSPHRASE;
-          }
-        } else {
-          passphrase_value = process.env.BITGO_PASSPHRASE;
+
+        let coinArray = [];
+        for (let index = 0; index < coins.length; index++) {
+          const element = coins[index];
+          coinArray.push(element.coin)
         }
-        console.log("passphrase_value", passphrase_value);
-        var wallet_passphrase = await this.getDecryptData(passphrase_value);
-        var enterprise_value = await module.exports.getDecryptData(process.env.BITGO_ENTERPRISE);
-        var send_data = {
-          address: address,
-          // amount: parseFloat(inputs.amount),
-          walletPassphrase: wallet_passphrase
-        };
+        var resData = body.data
+        for (var i = 0; i < resData.length; i++) {
+          // Store in Temp Table
+          let price_object = {
+            coin: resData[i].symbol,
+            price: resData[i].quote.USD.price,
+            market_cap: resData[i].quote.USD.market_cap,
+            percent_change_1h: resData[i].quote.USD.percent_change_1h,
+            percent_change_24h: resData[i].quote.USD.percent_change_24h,
+            percent_change_7d: resData[i].quote.USD.percent_change_7d,
+            volume_24h: resData[i].quote.USD.volume_24h
+          };
+          let accountClass = await TempCoinmarketcap
+            .query()
+            .insert(price_object);
 
-        send_data.amount = parseFloat(amount);
-        if (coin == "txrp" || coin == "xrp" || coin == "teth" || coin == "eth") {
-          send_data.amount = (amount).toString();
-        }
-        if (coin != "txrp" && coin != "xrp" && coin != "teth" && coin != "eth") {
-          if (inputs.feeRate && feeRate > 0) {
-            send_data.feeRate = feeRate;
-            // send_data.fee = inputs.feeRate;
-            // send_data.maxFeeRate = inputs.feeRate;
-          }
-        }
-
-        send_data.comment = 'Timestamp_' + Math.random().toString(36).substring(2) + "_" + (new Date().getTime());
-        send_data.sequenceId = 'Timestamp_' + Math.random().toString(36).substring(2) + "_" + (new Date().getTime());
-        // send_data.label = 'Timestamp_'+Math.random().toString(36).substring(2)+"_"+(new Date().getTime());
-        console.log("send_data", send_data);
-        request({
-          url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}/sendcoins`,
-          method: "POST",
-          headers: {
-            'cache-control': 'no-cache',
-            Authorization: `Bearer ${access_token_value}`,
-            'Content-Type': 'application/json',
-            'enterprise_id': enterprise_value
-          },
-          body: send_data,
-          json: true
-        }, function (err, httpResponse, body) {
-          console.log(err);
-          console.log(body);
-          if (err) {
-            console.log("Error", err)
-            reject(err);
-          }
-          if (body.error) {
-            reject(body);
-          }
-          resolve(body);
-        });
-      } catch (error) {
-        console.log(error)
-        reject(error);
-      }
-    })
-  }
-
-  // Get Wallet Data Value
-  async getWalletData(walletId, coin) {
-    return new Promise(async (resolve, reject) => {
-      var access_token_value = await this.getDecryptData(process.env.BITGO_ACCESS_TOKEN);
-
-      await request({
-        url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}`,
-        method: "GET",
-        headers: {
-          'cache-control': 'no-cache',
-          Authorization: `Bearer ${access_token_value}`,
-          'Content-Type': 'application/json'
-        },
-        json: true
-      }, function (err, httpResponse, body) {
-        // console.log("wallet", err);
-        if (err) {
-          resolve(err);
-        }
-        if (body.error) {
-          resolve(body);
-        }
-        resolve(body);
-      });
-    })
-  }
-
-  // Send Left Over Residual Amount to Warm Wallet
-  async sendResidualReceiveFunds() {
-    console.log("SEND RESIDUAL RECEIVE FUNDS");
-    await cronSend("Before Send Receive")
-    var coinData = await Coins
-      .query()
-      .select('hot_receive_wallet_address', 'coin_code', 'warm_wallet_address', 'id')
-      .where('deleted_at', null)
-      .andWhere('is_active', true)
-      .orderBy('id', 'DESC');
-
-    if (coinData && coinData != undefined && coinData.length > 0) {
-      for (var i = 0; i < coinData.length; i++) {
-        if (coinData[i].coin_code != "terc" && coinData[i].coin_code != "SUSU") {
-          console.log("coinData[i]", coinData[i]);
-          if (coinData[i].hot_receive_wallet_address != null) {
-            var data = await module.exports.getWalletData(coinData[i].hot_receive_wallet_address, coinData[i].coin_code)
-            var warmWalletData = await module.exports.getWalletData(coinData[i].warm_wallet_address, coinData[i].coin_code);
-            var adminAddress = await Wallet
+          // Update Currency conversion table
+          if (coinArray.includes(resData[i].symbol)) {
+            let existCurrencyData = await CurrencyConversionModel
               .query()
               .first()
-              .select()
               .where('deleted_at', null)
-              .andWhere('coin_id', coinData[i].id)
-              .andWhere('user_id', 36)
-              .andWhere('is_admin', true)
+              .andWhere('symbol', resData[i].symbol)
+              .orderBy('id', 'DESC');
+            if (existCurrencyData) {
+              // var currency_data = await CurrencyConversionModel
+              //   .update({
+              //     coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id
+              //   })
+              //   .set({
+              //     quote: currencyData.data[i].quote
+              //   })
+              //   .fetch();
+              var currency_data = await CurrencyConversionModel
+                .query()
+                .first()
+                .where('coin_id', coins[coinArray.indexOf(resData[i].symbol)].id)
+                .patch({
+                  "quote": resData[i].quote
+                });
+            } else {
+              // var currency_data = await CurrencyConversionModel
+              //   .create({
+              //     coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id,
+              //     quote: currencyData.data[i].quote,
+              //     symbol: currencyData.data[i].symbol,
+              //     created_at: new Date()
+              //   })
+              //   .fetch();
+              var currency_data = await CurrencyConversionModel
+                .query()
+                .insert({
+                  coin_id: coins[coinArray.indexOf(resData[i].symbol)].id,
+                  quote: resData[i].quote,
+                  symbol: resData[i].symbol,
+                  created_at: new Date()
+                });
+            }
+          }
+
+          var coinData = await Coins
+            .query()
+            .select('coin_name', 'coin_code', 'coin')
+            .where('is_active', true)
+            .andWhere('deleted_at', null)
+            .orderBy('id', 'ASC');
+
+          console.log("coinData ", coinData)
+
+          var currency = ['USD', 'EUR', 'INR']
+          var object = {}
+          for (var i = 0; i < coinData.length; i++) {
+            for (var j = 0; j < currency.length; j++) {
+              var dataValue = await currencyConversionHelper.convertValue(coinData[i].coin_name, currency[j])
+              dataValue = JSON.stringify(dataValue)
+              console.log(dataValue)
+              dataValue = JSON.parse(dataValue)
+              console.log("data value" + dataValue['USD'] + " for coin " + coinData[i].coin_name)
+              var value = currency[j]
+              value = {
+                "price": dataValue.current_price,
+                "price_change_24h": dataValue.price_change_24h,
+                "percent_change_24h": dataValue.price_change_percentage_24h
+              }
+              object.push()
+            }
+          }
+        }
+
+        // Function for getting the network Fee Value
+        async getNetworkFee(coin, walletId, amount, address) {
+          return new Promise(async (resolve, reject) => {
+            console.log("coin, walletId, amount, address", coin, walletId, amount, address)
+            var coinData = await Coins
+              .query()
+              .select()
+              .first()
+              .where('deleted_at', null)
+              .andWhere('is_active', true)
+              .andWhere('coin_code', coin)
               .orderBy('id', 'DESC');
 
-            var thresholdValue;
-            var feesValue;
-            if (coinData[i].coin_code == 'btc' || coinData[i].coin_code == 'tbtc') {
-              thresholdValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'btc_limit_wallet_transfer')
-                .orderBy('id', 'DESC');
-              feesValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'btc_static_fees')
-                .orderBy('id', 'DESC');
-            } else if (coinData[i].coin_code == 'eth' || coinData[i].coin_code == 'teth') {
-              thresholdValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'eth_limit_wallet_transfer')
-                .orderBy('id', 'DESC');
-              feesValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'eth_static_fees')
-                .orderBy('id', 'DESC');
-            } else if (coinData[i].coin_code == 'xrp' || coinData[i].coin_code == 'txrp') {
-              thresholdValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'xrp_limit_wallet_transfer')
-                .orderBy('id', 'DESC');
-              feesValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'xrp_static_fees')
-                .orderBy('id', 'DESC');
-            } else if (coinData[i].coin_code == 'ltc' || coinData[i].coin_code == 'tltc') {
-              thresholdValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'ltc_limit_wallet_transfer')
-                .orderBy('id', 'DESC');
-              feesValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'ltc_static_fees')
-                .orderBy('id', 'DESC');
+            if ((coin != 'eth' && coin != 'xrp' && coinData.iserc != true) && (coin != 'teth' && coin != 'txrp' && coinData.iserc != true)) {
+              var recipients = [
+                {
+                  "amount": parseFloat((amount * 1e8).toFixed(process.env.TOTAL_PRECISION)),
+                  "address": address
+                }
+              ];
+            } else if ((coin == "eth") || (coin == "teth" || coinData.iserc == true)) {
+              var recipients = [
+                {
+                  "amount": (amount).toString(),
+                  "address": address
+                }
+              ];
+            } else if ((coin == 'xrp') || (coin == 'txrp')) {
+              var recipients = [
+                {
+                  "amount": (amount).toString(),
+                  "address": address
+                }
+              ];
             }
-            thresholdValue = thresholdValue.value;
-            feesValue = feesValue.value;
-            console.log("thresholdValue", thresholdValue);
-            console.log("feesValue", feesValue);
-            console.log("coinData[i].coin_code", coinData[i].coin_code);
-            console.log("data", data);
+            console.log("recipients", recipients)
+            if (coinData != undefined) {
+              var access_token_value = await module.exports.getDecryptData(process.env.BITGO_ACCESS_TOKEN);
+              var enterprise_value = await module.exports.getDecryptData(process.env.BITGO_ENTERPRISE);
+              await request({
+                url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}/tx/build`,
+                method: "POST",
+                headers: {
+                  // 'cache-control': 'no-cache',
+                  Authorization: `Bearer ${access_token_value}`,
+                  'Content-Type': 'application/json',
+                  'enterprise_id': enterprise_value
+                },
+                body: {
+                  "recipients": recipients
+                },
+                json: true
+              }, function (err, httpResponse, body) {
+                if (err) {
+                  resolve(err);
+                }
+                if (body.error) {
+                  resolve(body);
+                }
+                console.log(body);
+                var feeValue;
+                if (coin == "eth" || coin == "teth" || coinData.iserc == true) {
+                  let gasLimit = body.gasLimit;
+                  let gasPrice = body.gasPrice;
+                  gasPrice = parseFloat(gasPrice / 1e9).toFixed(8);
+                  feeValue = parseFloat(gasPrice) * parseFloat(gasLimit)
+                  feeValue = parseFloat(feeValue / 1e9).toFixed(8)
+                } else if (coin == 'xrp' || coin == 'txrp') {
+                  feeValue = body.txInfo.Fee
+                  feeValue = (feeValue / 1e6).toFixed(8)
+                } else {
+                  feeValue = body.feeInfo
+                }
+                resolve(feeValue);
+              });
+            } else {
+              resolve("Coin Not Found")
+            }
+          })
+        }
 
-            if ((data.balance && data.balance != undefined) || (data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "teth" && coinData[i].coin_code != "eth")) || ((data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "txrp" && coinData[i].coin_code != "xrp")))) {
-              var amount = (coinData[i].coin_code != 'teth' && coinData[i].coin_code != 'eth' && coinData[i].coin_code != 'txrp' && coinData[i].coin_code != 'xrp') ? (data.balance) : data.balanceString;
-              var exactSendAmount = 0.0;
-              var feeRateValue;
-              var estimateFee = 0.0
-              var feeValue = 0.0
-              if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth") {
-                console.log("coinData[i].coin_code, (amount), warmWalletData.receiveAddress.address", coinData[i].coin_code, (amount), warmWalletData.receiveAddress.address)
-                var reposneData = await module
-                  .exports
-                  .getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, (amount), warmWalletData.receiveAddress.address);
-                feeValue = (reposneData / 1e9)
-                estimateFee = feeValue
-                exactSendAmount = amount;
-                feeRateValue = 0.0
-              } else if (coinData[i].coin_code == 'txrp' || coinData[i].coinData[i].coin_code == 'xrp') {
-                var feesValue = parseFloat(45 / 1e6).toFixed(8)
-                estimateFee = feesValue;
-                exactSendAmount = amount - 45;
-                feeValue = parseFloat(45 / 1000000).toFixed(8)
-                feeRateValue = 0.0
+        // Send the Amount
+        async send(address, amount, feeRate, coin, walletId) {
+          return new Promise(async (resolve, reject) => {
+            try {
+              console.log("address", address);
+              console.log("amount", amount);
+              console.log("feeRate", feeRate);
+              console.log("coin", coin);
+              console.log("walletId", walletId);
+              var access_token_value = await this.getDecryptData(process.env.BITGO_ACCESS_TOKEN);
+              // var passphrase_value = await this.getDecryptData(process.env.BITGO_PASSPHRASE);
+              var passphrase_value = process.env.BITGO_PASSPHRASE;
+
+              var coinData = await Coins
+                .query()
+                .select()
+                .first()
+                .where('deleted_at', null)
+                .andWhere('is_active', true)
+                .andWhere('coin_code', coin)
+                .orderBy('id', 'DESC');
+              console.log("coindata", coinData);
+              if (coinData && coinData != undefined) {
+                if (coin == "btc") { // BTC
+                  if (coinData.warm_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_BTC_WARM_WALLET_PASSPHRASE;
+                    console.log("In warm_wallet_address");
+                  } else if (coinData.hot_send_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_BTC_HOT_RECEIVE_WALLET_PASSPHRASE;
+                    console.log("In hot_send_wallet_address");
+                  } else if (coinData.hot_receive_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_BTC_HOT_SEND_WALLET_PASSPHRASE;
+                    console.log("In hot_receive_wallet_address");
+                  } else if (coinData.custody_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_PASSPHRASE;
+                    console.log("In custody_wallet_address");
+                  }
+                  passphrase_value = process.env.BITGO_BTC_HOT_SEND_WALLET_PASSPHRASE;
+                } else if (coin == "ltc") { // LTC
+                  if (coinData.warm_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_LTC_WARM_WALLET_PASSPHRASE;
+                    console.log("In warm_wallet_address");
+                  } else if (coinData.hot_send_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_LTC_HOT_SEND_WALLET_PASSPHRASE;
+                    console.log("In hot_send_wallet_address");
+                  } else if (coinData.hot_receive_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_LTC_HOT_RECEIVE_WALLET_PASSPHRASE;
+                    console.log("In hot_receive_wallet_address LTC");
+                  } else if (coinData.custody_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_PASSPHRASE;
+                    console.log("In custody_wallet_address");
+                  }
+                } else if (coin == "xrp") { // XRP
+                  if (coinData.warm_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_XRP_WARM_WALLET_PASSPHRASE;
+                    console.log("In warm_wallet_address");
+                  } else if (coinData.hot_send_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_XRP_HOT_SEND_WALLET_PASSPHRASE;
+                    console.log("In hot_send_wallet_address");
+                  } else if (coinData.hot_receive_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_XRP_HOT_RECEIVE_WALLET_PASSPHRASE;
+                    console.log("In hot_receive_wallet_address LTC");
+                  } else if (coinData.custody_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_PASSPHRASE;
+                    console.log("In custody_wallet_address");
+                  }
+                } else if (coin == "eth" || coinData.iserc == true) { // ETH
+                  if (coinData.warm_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_ETH_WARM_WALLET_PASSPHRASE;
+                    console.log("In warm_wallet_address");
+                  } else if (coinData.hot_send_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_ETH_HOT_SEND_WALLET_PASSPHRASE;
+                    console.log("In hot_send_wallet_address");
+                  } else if (coinData.hot_receive_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_ETH_HOT_RECEIVE_WALLET_PASSPHRASE;
+                    console.log("In hot_receive_wallet_address LTC");
+                  } else if (coinData.custody_wallet_address == walletId) {
+                    passphrase_value = process.env.BITGO_PASSPHRASE;
+                    console.log("In custody_wallet_address");
+                  }
+                } else {
+                  passphrase_value = process.env.BITGO_PASSPHRASE;
+                }
               } else {
-                amountToBeSend = amount - feesValue;
-                var getFeeValue = await module
-                  .exports
-                  .getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
-
-                console.log("getFeeValue", getFeeValue);
-                var size = getFeeValue.size; // in bytes
-                console.log("size", size);
-                var get_sizefor_tx = size / 1024; // in kb
-                console.log("get_sizefor_tx", get_sizefor_tx)
-                var amount_fee_rate = feesValue * get_sizefor_tx
-                exactSendAmount = parseFloat(amount) - parseFloat(2 * (getFeeValue.fee));
-                feeValue = (parseFloat(2 * getFeeValue.fee) / 1e8).toFixed(8)
-                estimateFee = (parseFloat(2 * getFeeValue.fee) / 1e8).toFixed(8);
-                exactSendAmount = parseFloat(amount).toFixed(8);
-                console.log(exactSendAmount)
-                feeRateValue = parseInt(amount_fee_rate);
-                console.log("======SEND======", feeRateValue);
+                passphrase_value = process.env.BITGO_PASSPHRASE;
               }
-              console.log("exactSendAmount", exactSendAmount)
-              console.log(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address)
-              // amount = 5000000;
-              // console.log("amount", amount);
-              if ((parseFloat(exactSendAmount) >= thresholdValue)) {
-                if (warmWalletData.receiveAddress.address != undefined) {
-                  var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
-                  console.log("sendTransaction", sendTransaction)
+              console.log("passphrase_value", passphrase_value);
+              var wallet_passphrase = await this.getDecryptData(passphrase_value);
+              var enterprise_value = await module.exports.getDecryptData(process.env.BITGO_ENTERPRISE);
+              var send_data = {
+                address: address,
+                // amount: parseFloat(inputs.amount),
+                walletPassphrase: wallet_passphrase
+              };
 
-                  await cronSend("After Send Transaction Receive");
-                  var division = 1e8;
-                  if ((coinData[i].coin_code != "teth" && coinData[i].coin_code != 'txrp') && coinData[i].coin_code != "eth" && coinData[i].coin_code != 'xrp') {
-                    exactSendAmount = parseFloat(exactSendAmount / 1e8).toFixed(8)
-                  } else if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth") {
-                    exactSendAmount = parseFloat(exactSendAmount / 1e18).toFixed(8)
-                    division = 1e18;
-                  } else if (coinData[i].coin_code == "xrp" || coinData[i].coin_code == "txrp") {
-                    exactSendAmount = parseFloat(exactSendAmount / 1e6).toFixed(8);
-                    division = 1e6;
-                  }
-                  var transactionDetails = {
-                    coin_id: coinData[i].id,
-                    source_address: data.receiveAddress.address,
-                    destination_address: warmWalletData.receiveAddress.address,
-                    user_id: 36,
-                    amount: (exactSendAmount),
-                    transaction_type: 'receive',
-                    is_executed: true,
-                    transaction_id: sendTransaction.txid,
-                    faldax_fee: 0,
-                    actual_network_fees: (parseFloat(sendTransaction.transfer.feeString / division).toFixed(8)),
-                    estimated_network_fees: (parseFloat(estimateFee / division).toFixed(8)),
-                    is_done: true,
-                    actual_amount: parseFloat(amount / division).toFixed(8),
-                    is_admin: true,
-                    residual_amount: (parseFloat(estimateFee).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / division).toFixed(8)),
-                    transaction_from: "Residual Receive to Warmwallet"
-                  }
-                  console.log(transactionDetails)
-                  var value;
-                  await residualTransactionModel
-                    .query()
-                    .insert(transactionDetails).then(newRecord => {
-                      console.log('New Record', newRecord);
-                    });;
+              send_data.amount = parseFloat(amount);
+              if (coin == "txrp" || coin == "xrp" || coin == "teth" || coin == "eth" || coinData.iserc == true) {
+                send_data.amount = (amount).toString();
+              }
+              if (coin != "txrp" && coin != "xrp" && coin != "teth" && coin != "eth" && coinData.iserc != true) {
+                if (inputs.feeRate && feeRate > 0) {
+                  send_data.feeRate = feeRate;
+                  // send_data.fee = inputs.feeRate;
+                  // send_data.maxFeeRate = inputs.feeRate;
+                }
+              }
 
-                  var amountValue = (exactSendAmount);
-                  var balanceUpdate = parseFloat(adminAddress.balance) + parseFloat(amountValue)
-                  console.log("balanceUpdate", balanceUpdate);
-                  var placedBalanceUpdate = parseFloat(adminAddress.placed_balance) + parseFloat(amountValue)
-                  var walletBalanceUpdate = await Wallet
+              send_data.comment = 'Timestamp_' + Math.random().toString(36).substring(2) + "_" + (new Date().getTime());
+              send_data.sequenceId = 'Timestamp_' + Math.random().toString(36).substring(2) + "_" + (new Date().getTime());
+              // send_data.label = 'Timestamp_'+Math.random().toString(36).substring(2)+"_"+(new Date().getTime());
+              console.log("send_data", send_data);
+              request({
+                url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}/sendcoins`,
+                method: "POST",
+                headers: {
+                  'cache-control': 'no-cache',
+                  Authorization: `Bearer ${access_token_value}`,
+                  'Content-Type': 'application/json',
+                  'enterprise_id': enterprise_value
+                },
+                body: send_data,
+                json: true
+              }, function (err, httpResponse, body) {
+                console.log(err);
+                console.log(body);
+                if (err) {
+                  console.log("Error", err)
+                  reject(err);
+                }
+                if (body.error) {
+                  reject(body);
+                }
+                resolve(body);
+              });
+            } catch (error) {
+              console.log(error)
+              reject(error);
+            }
+          })
+        }
+
+        // Get Wallet Data Value
+        async getWalletData(walletId, coin) {
+          return new Promise(async (resolve, reject) => {
+            var access_token_value = await this.getDecryptData(process.env.BITGO_ACCESS_TOKEN);
+
+            await request({
+              url: `${process.env.BITGO_PROXY_URL}/${coin}/wallet/${walletId}`,
+              method: "GET",
+              headers: {
+                'cache-control': 'no-cache',
+                Authorization: `Bearer ${access_token_value}`,
+                'Content-Type': 'application/json'
+              },
+              json: true
+            }, function (err, httpResponse, body) {
+              // console.log("wallet", err);
+              if (err) {
+                resolve(err);
+              }
+              if (body.error) {
+                resolve(body);
+              }
+              resolve(body);
+            });
+          })
+        }
+
+        // Send Left Over Residual Amount to Warm Wallet
+        async sendResidualReceiveFunds() {
+          console.log("SEND RESIDUAL RECEIVE FUNDS");
+          await cronSend("Before Send Receive")
+          var coinData = await Coins
+            .query()
+            .select('hot_receive_wallet_address', 'coin_code', 'warm_wallet_address', 'id')
+            .where('deleted_at', null)
+            .andWhere('is_active', true)
+            .orderBy('id', 'DESC');
+
+          if (coinData && coinData != undefined && coinData.length > 0) {
+            for (var i = 0; i < coinData.length; i++) {
+              if (coinData[i].coin_code != "SUSU") {
+                console.log("coinData[i]", coinData[i]);
+                if (coinData[i].hot_receive_wallet_address != null) {
+                  var data = await module.exports.getWalletData(coinData[i].hot_receive_wallet_address, coinData[i].coin_code)
+                  var warmWalletData = await module.exports.getWalletData(coinData[i].warm_wallet_address, coinData[i].coin_code);
+                  var adminAddress = await Wallet
                     .query()
+                    .first()
+                    .select()
                     .where('deleted_at', null)
                     .andWhere('coin_id', coinData[i].id)
                     .andWhere('user_id', 36)
                     .andWhere('is_admin', true)
-                    .patch({
-                      "balance": balanceUpdate,
-                      "placed_balance": placedBalanceUpdate
-                    })
+                    .orderBy('id', 'DESC');
+
+                  var thresholdValue;
+                  var feesValue;
+                  if (coinData[i].coin_code == 'btc' || coinData[i].coin_code == 'tbtc') {
+                    thresholdValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'btc_limit_wallet_transfer')
+                      .orderBy('id', 'DESC');
+                    feesValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'btc_static_fees')
+                      .orderBy('id', 'DESC');
+                  } else if (coinData[i].coin_code == 'eth' || coinData[i].coin_code == 'teth' || coinData[i].iserc == true) {
+                    thresholdValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'eth_limit_wallet_transfer')
+                      .orderBy('id', 'DESC');
+                    feesValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'eth_static_fees')
+                      .orderBy('id', 'DESC');
+                  } else if (coinData[i].coin_code == 'xrp' || coinData[i].coin_code == 'txrp') {
+                    thresholdValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'xrp_limit_wallet_transfer')
+                      .orderBy('id', 'DESC');
+                    feesValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'xrp_static_fees')
+                      .orderBy('id', 'DESC');
+                  } else if (coinData[i].coin_code == 'ltc' || coinData[i].coin_code == 'tltc') {
+                    thresholdValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'ltc_limit_wallet_transfer')
+                      .orderBy('id', 'DESC');
+                    feesValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'ltc_static_fees')
+                      .orderBy('id', 'DESC');
+                  }
+                  thresholdValue = thresholdValue.value;
+                  feesValue = feesValue.value;
+                  console.log("thresholdValue", thresholdValue);
+                  console.log("feesValue", feesValue);
+                  console.log("coinData[i].coin_code", coinData[i].coin_code);
+                  console.log("data", data);
+
+                  if ((data.balance && data.balance != undefined) || (data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "teth" && coinData[i].coin_code != "eth")) || ((data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "txrp" && coinData[i].coin_code != "xrp"))) || ((data.balanceString && data.balanceString != undefined && (coinData[i].iserc != true)))) {
+                    var amount = (coinData[i].coin_code != 'teth' && coinData[i].coin_code != 'eth' && coinData[i].coin_code != 'txrp' && coinData[i].coin_code != 'xrp') ? (data.balance) : data.balanceString;
+                    var exactSendAmount = 0.0;
+                    var feeRateValue;
+                    var estimateFee = 0.0
+                    var feeValue = 0.0
+                    if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth" || coinData[i].iserc == true) {
+                      console.log("coinData[i].coin_code, (amount), warmWalletData.receiveAddress.address", coinData[i].coin_code, (amount), warmWalletData.receiveAddress.address)
+                      var reposneData = await module
+                        .exports
+                        .getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, (amount), warmWalletData.receiveAddress.address);
+                      feeValue = (reposneData / 1e9)
+                      estimateFee = feeValue
+                      exactSendAmount = amount;
+                      feeRateValue = 0.0
+                    } else if (coinData[i].coin_code == 'txrp' || coinData[i].coinData[i].coin_code == 'xrp') {
+                      var feesValue = parseFloat(45 / 1e6).toFixed(8)
+                      estimateFee = feesValue;
+                      exactSendAmount = amount - 45;
+                      feeValue = parseFloat(45 / 1000000).toFixed(8)
+                      feeRateValue = 0.0
+                    } else {
+                      amountToBeSend = amount - feesValue;
+                      var getFeeValue = await module
+                        .exports
+                        .getNetworkFee(coinData[i].coin_code, coinData[i].hot_receive_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
+
+                      console.log("getFeeValue", getFeeValue);
+                      var size = getFeeValue.size; // in bytes
+                      console.log("size", size);
+                      var get_sizefor_tx = size / 1024; // in kb
+                      console.log("get_sizefor_tx", get_sizefor_tx)
+                      var amount_fee_rate = feesValue * get_sizefor_tx
+                      exactSendAmount = parseFloat(amount) - parseFloat(2 * (getFeeValue.fee));
+                      feeValue = (parseFloat(2 * getFeeValue.fee) / 1e8).toFixed(8)
+                      estimateFee = (parseFloat(2 * getFeeValue.fee) / 1e8).toFixed(8);
+                      exactSendAmount = parseFloat(amount).toFixed(8);
+                      console.log(exactSendAmount)
+                      feeRateValue = parseInt(amount_fee_rate);
+                      console.log("======SEND======", feeRateValue);
+                    }
+                    console.log("exactSendAmount", exactSendAmount)
+                    console.log(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address)
+                    // amount = 5000000;
+                    // console.log("amount", amount);
+                    if ((parseFloat(exactSendAmount) >= thresholdValue)) {
+                      if (warmWalletData.receiveAddress.address != undefined) {
+                        var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_receive_wallet_address);
+                        console.log("sendTransaction", sendTransaction)
+
+                        await cronSend("After Send Transaction Receive");
+                        var division = 1e8;
+                        if ((coinData[i].coin_code != "teth" && coinData[i].coin_code != 'txrp') && coinData[i].coin_code != "eth" && coinData[i].coin_code != 'xrp' && coinData[i].iserc != true) {
+                          exactSendAmount = parseFloat(exactSendAmount / 1e8).toFixed(8)
+                        } else if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth" || coinData[i].iserc == true) {
+                          exactSendAmount = parseFloat(exactSendAmount / 1e18).toFixed(8)
+                          division = 1e18;
+                        } else if (coinData[i].coin_code == "xrp" || coinData[i].coin_code == "txrp") {
+                          exactSendAmount = parseFloat(exactSendAmount / 1e6).toFixed(8);
+                          division = 1e6;
+                        }
+                        var transactionDetails = {
+                          coin_id: coinData[i].id,
+                          source_address: data.receiveAddress.address,
+                          destination_address: warmWalletData.receiveAddress.address,
+                          user_id: 36,
+                          amount: (exactSendAmount),
+                          transaction_type: 'receive',
+                          is_executed: true,
+                          transaction_id: sendTransaction.txid,
+                          faldax_fee: 0,
+                          actual_network_fees: (parseFloat(sendTransaction.transfer.feeString / division).toFixed(8)),
+                          estimated_network_fees: (parseFloat(estimateFee / division).toFixed(8)),
+                          is_done: true,
+                          actual_amount: parseFloat(amount / division).toFixed(8),
+                          is_admin: true,
+                          residual_amount: (parseFloat(estimateFee).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / division).toFixed(8)),
+                          transaction_from: "Residual Receive to Warmwallet"
+                        }
+                        console.log(transactionDetails)
+                        var value;
+                        await residualTransactionModel
+                          .query()
+                          .insert(transactionDetails).then(newRecord => {
+                            console.log('New Record', newRecord);
+                          });;
+
+                        var amountValue = (exactSendAmount);
+                        var balanceUpdate = parseFloat(adminAddress.balance) + parseFloat(amountValue)
+                        console.log("balanceUpdate", balanceUpdate);
+                        var placedBalanceUpdate = parseFloat(adminAddress.placed_balance) + parseFloat(amountValue)
+                        var walletBalanceUpdate = await Wallet
+                          .query()
+                          .where('deleted_at', null)
+                          .andWhere('coin_id', coinData[i].id)
+                          .andWhere('user_id', 36)
+                          .andWhere('is_admin', true)
+                          .patch({
+                            "balance": balanceUpdate,
+                            "placed_balance": placedBalanceUpdate
+                          })
 
 
-                  await cronSend("After Value Balance Receive");
+                        await cronSend("After Value Balance Receive");
+                      }
+                    }
+                  }
                 }
               }
             }
           }
         }
-      }
-    }
-  }
 
-  async sendResidualSendFunds() {
-    console.log("INSIDE RESIDUAL SEND FUNDS")
-    await cronSend("Before Send Send")
-    var coinData = await Coins
-      .query()
-      .select('hot_send_wallet_address', 'coin_code', 'warm_wallet_address', 'id')
-      .where('deleted_at', null)
-      .andWhere('is_active', true)
-      .orderBy('id', 'DESC');
+        async sendResidualSendFunds() {
+          console.log("INSIDE RESIDUAL SEND FUNDS")
+          await cronSend("Before Send Send")
+          var coinData = await Coins
+            .query()
+            .select('hot_send_wallet_address', 'coin_code', 'warm_wallet_address', 'id')
+            .where('deleted_at', null)
+            .andWhere('is_active', true)
+            .orderBy('id', 'DESC');
 
-    if (coinData && coinData != undefined && coinData.length > 0) {
-      for (var i = 0; i < coinData.length; i++) {
-        if (coinData[i].coin_code != "terc" && coinData[i].coin_code != "SUSU") {
-          console.log("coinData[i]", coinData[i]);
-          if (coinData[i].hot_send_wallet_address != null) {
-            var data = await module.exports.getWalletData(coinData[i].hot_send_wallet_address, coinData[i].coin_code)
-            var warmWalletData = await module.exports.getWalletData(coinData[i].warm_wallet_address, coinData[i].coin_code);
-            var adminAddress = await Wallet
-              .query()
-              .first()
-              .select()
-              .where('deleted_at', null)
-              .andWhere('coin_id', coinData[i].id)
-              .andWhere('user_id', 36)
-              .andWhere('is_admin', true)
-              .orderBy('id', 'DESC');
+          if (coinData && coinData != undefined && coinData.length > 0) {
+            for (var i = 0; i < coinData.length; i++) {
+              if (coinData[i].coin_code != "SUSU") {
+                console.log("coinData[i]", coinData[i]);
+                if (coinData[i].hot_send_wallet_address != null) {
+                  var data = await module.exports.getWalletData(coinData[i].hot_send_wallet_address, coinData[i].coin_code)
+                  var warmWalletData = await module.exports.getWalletData(coinData[i].warm_wallet_address, coinData[i].coin_code);
+                  var adminAddress = await Wallet
+                    .query()
+                    .first()
+                    .select()
+                    .where('deleted_at', null)
+                    .andWhere('coin_id', coinData[i].id)
+                    .andWhere('user_id', 36)
+                    .andWhere('is_admin', true)
+                    .orderBy('id', 'DESC');
 
-            var thresholdValue;
-            var feesValue;
-            if (coinData[i].coin_code == 'btc' || coinData[i].coin_code == 'tbtc') {
-              thresholdValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'btc_limit_wallet_transfer')
-                .orderBy('id', 'DESC');
-              feesValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'btc_static_fees')
-                .orderBy('id', 'DESC');
-            } else if (coinData[i].coin_code == 'eth' || coinData[i].coin_code == 'teth') {
-              thresholdValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'eth_limit_wallet_transfer')
-                .orderBy('id', 'DESC');
-              feesValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'eth_static_fees')
-                .orderBy('id', 'DESC');
-            } else if (coinData[i].coin_code == 'xrp' || coinData[i].coin_code == 'txrp') {
-              thresholdValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'xrp_limit_wallet_transfer')
-                .orderBy('id', 'DESC');
-              feesValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'xrp_static_fees')
-                .orderBy('id', 'DESC');
-            } else if (coinData[i].coin_code == 'ltc' || coinData[i].coin_code == 'tltc') {
-              thresholdValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'ltc_limit_wallet_transfer')
-                .orderBy('id', 'DESC');
-              feesValue = await AdminSettingModel
-                .query()
-                .first()
-                .select('value')
-                .where('deleted_at', null)
-                .andWhere('slug', 'ltc_static_fees')
-                .orderBy('id', 'DESC');
-            }
-            thresholdValue = thresholdValue.value;
-            feesValue = feesValue.value;
-            console.log("thresholdValue", thresholdValue);
-            console.log("feesValue", feesValue);
-            console.log("coinData[i].coin_code", coinData[i].coin_code);
-            console.log("data", data);
-            if (coinData[i].coin_code == 'txrp' || coinData[i].coin_code == 'xrp' || coinData[i].coin_code == 'teth' || coinData[i].coin_code == 'eth') {
-              if ((data.balance && data.balance != undefined) || (data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "teth" && coinData[i].coin_code != "eth")) || ((data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "txrp" && coinData[i].coin_code != "xrp")))) {
-                var amount = (coinData[i].coin_code != 'teth' && coinData[i].coin_code != 'eth' && coinData[i].coin_code != 'txrp' && coinData[i].coin_code != 'xrp') ? (data.balance) : data.balanceString;
-                var exactSendAmount = 0.0;
-                var feeRateValue;
-                var estimateFee = 0.0
-                var feeValue = 0.0
-                if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth") {
-                  console.log("coinData[i].coin_code, (amount), warmWalletData.receiveAddress.address", coinData[i].coin_code, (amount), warmWalletData.receiveAddress.address)
-                  var reposneData = await module
-                    .exports
-                    .getNetworkFee(coinData[i].coin_code, coinData[i].hot_send_wallet_address, (amount), warmWalletData.receiveAddress.address);
-                  feeValue = (reposneData / 1e9)
-                  estimateFee = feeValue
-                  exactSendAmount = amount;
-                  feeRateValue = 0.0
-                } else if (coinData[i].coin_code == 'txrp' || coinData[i].coinData[i].coin_code == 'xrp') {
-                  var feesValue = parseFloat(45 / 1e6).toFixed(8)
-                  estimateFee = feesValue;
-                  exactSendAmount = amount - 45;
-                  feeValue = parseFloat(45 / 1000000).toFixed(8)
-                  feeRateValue = 0.0
-                } else {
-                  amountToBeSend = amount - feesValue;
-                  var getFeeValue = await module
-                    .exports
-                    .getNetworkFee(coinData[i].coin_code, coinData[i].hot_send_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
-                  console.log("getFeeValue", getFeeValue);
-                  var size = getFeeValue.size; // in bytes
-                  console.log("size", size);
-                  var get_sizefor_tx = size / 1024; // in kb
-                  console.log("get_sizefor_tx", get_sizefor_tx)
-                  var amount_fee_rate = feesValue * get_sizefor_tx
-                  exactSendAmount = parseFloat(amount) - parseFloat(2 * (getFeeValue.fee));
-                  feeValue = (parseFloat(2 * getFeeValue.fee) / 1e8).toFixed(8)
-                  estimateFee = (parseFloat(2 * getFeeValue.fee) / 1e8).toFixed(8);
-                  exactSendAmount = parseFloat(amount).toFixed(8);
-                  console.log(exactSendAmount)
-                  feeRateValue = parseInt(amount_fee_rate);
-                  console.log("======SEND======", feeRateValue);
-                }
-
-                console.log("exactSendAmount", exactSendAmount)
-                console.log(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_send_wallet_address)
-                if ((parseFloat(exactSendAmount) >= thresholdValue)) {
-                  if (warmWalletData.receiveAddress.address != undefined) {
-                    var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_send_wallet_address);
-                    console.log(sendTransaction);
-                    await cronSend("After Send Send");
-                    var division = 1e8;
-                    if ((coinData[i].coin_code != "teth" && coinData[i].coin_code != 'txrp') && coinData[i].coin_code != "eth" && coinData[i].coin_code != 'xrp') {
-                      exactSendAmount = parseFloat(exactSendAmount / 1e8).toFixed(8)
-                    } else if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth") {
-                      exactSendAmount = parseFloat(exactSendAmount / 1e18).toFixed(8)
-                      division = 1e18;
-                    } else if (coinData[i].coin_code == "xrp" || coinData[i].coin_code == "txrp") {
-                      exactSendAmount = parseFloat(exactSendAmount / 1e6).toFixed(8);
-                      division = 1e6;
-                    }
-                    var transactionDetails = {
-                      coin_id: coinData[i].id,
-                      source_address: data.receiveAddress.address,
-                      destination_address: warmWalletData.receiveAddress.address,
-                      user_id: 36,
-                      amount: (exactSendAmount),
-                      transaction_type: 'send',
-                      is_executed: true,
-                      transaction_id: sendTransaction.txid,
-                      faldax_fee: 0,
-                      actual_network_fees: (parseFloat(sendTransaction.transfer.feeString / division).toFixed(8)),
-                      estimated_network_fees: (parseFloat(estimateFee / division).toFixed(8)),
-                      is_done: true,
-                      actual_amount: parseFloat(amount / division).toFixed(8),
-                      is_admin: true,
-                      residual_amount: (parseFloat(estimateFee).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / division).toFixed(8)),
-                      transaction_from: "Residual Send to Warmwallet"
-                    }
-                    await residualTransactionModel
+                  var thresholdValue;
+                  var feesValue;
+                  if (coinData[i].coin_code == 'btc' || coinData[i].coin_code == 'tbtc') {
+                    thresholdValue = await AdminSettingModel
                       .query()
-                      .insert(transactionDetails);
-
-                    var amountValue = (exactSendAmount);
-                    var balanceUpdate = parseFloat(adminAddress.balance) + parseFloat(amountValue)
-                    console.log("balanceUpdate", balanceUpdate);
-                    var placedBalanceUpdate = parseFloat(adminAddress.placed_balance) + parseFloat(amountValue)
-                    var walletBalanceUpdate = await Wallet
-                      .query()
+                      .first()
+                      .select('value')
                       .where('deleted_at', null)
-                      .andWhere('coin_id', coinData[i].id)
-                      .andWhere('user_id', 36)
-                      .andWhere('is_admin', true)
-                      .patch({
-                        "balance": balanceUpdate,
-                        "placed_balance": placedBalanceUpdate
-                      })
-                    await cronSend("After Balance Update Send");
+                      .andWhere('slug', 'btc_limit_wallet_transfer')
+                      .orderBy('id', 'DESC');
+                    feesValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'btc_static_fees')
+                      .orderBy('id', 'DESC');
+                  } else if (coinData[i].coin_code == 'eth' || coinData[i].coin_code == 'teth' || coinData[i].iserc == true) {
+                    thresholdValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'eth_limit_wallet_transfer')
+                      .orderBy('id', 'DESC');
+                    feesValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'eth_static_fees')
+                      .orderBy('id', 'DESC');
+                  } else if (coinData[i].coin_code == 'xrp' || coinData[i].coin_code == 'txrp') {
+                    thresholdValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'xrp_limit_wallet_transfer')
+                      .orderBy('id', 'DESC');
+                    feesValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'xrp_static_fees')
+                      .orderBy('id', 'DESC');
+                  } else if (coinData[i].coin_code == 'ltc' || coinData[i].coin_code == 'tltc') {
+                    thresholdValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'ltc_limit_wallet_transfer')
+                      .orderBy('id', 'DESC');
+                    feesValue = await AdminSettingModel
+                      .query()
+                      .first()
+                      .select('value')
+                      .where('deleted_at', null)
+                      .andWhere('slug', 'ltc_static_fees')
+                      .orderBy('id', 'DESC');
+                  }
+                  thresholdValue = thresholdValue.value;
+                  feesValue = feesValue.value;
+                  console.log("thresholdValue", thresholdValue);
+                  console.log("feesValue", feesValue);
+                  console.log("coinData[i].coin_code", coinData[i].coin_code);
+                  console.log("data", data);
+                  if (coinData[i].coin_code == 'txrp' || coinData[i].coin_code == 'xrp' || coinData[i].coin_code == 'teth' || coinData[i].coin_code == 'eth' || coinData[i].iserc == true) {
+                    if ((data.balance && data.balance != undefined) || (data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "teth" && coinData[i].coin_code != "eth")) || ((data.balanceString && data.balanceString != undefined && (coinData[i].coin_code != "txrp" && coinData[i].coin_code != "xrp"))) || ((data.balanceString && data.balanceString != undefined && (coinData[i].iserc != true)))) {
+                      var amount = (coinData[i].coin_code != 'teth' && coinData[i].coin_code != 'eth' && coinData[i].coin_code != 'txrp' && coinData[i].coin_code != 'xrp') ? (data.balance) : data.balanceString;
+                      var exactSendAmount = 0.0;
+                      var feeRateValue;
+                      var estimateFee = 0.0
+                      var feeValue = 0.0
+                      if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth" || coinData[i].iserc == true) {
+                        console.log("coinData[i].coin_code, (amount), warmWalletData.receiveAddress.address", coinData[i].coin_code, (amount), warmWalletData.receiveAddress.address)
+                        var reposneData = await module
+                          .exports
+                          .getNetworkFee(coinData[i].coin_code, coinData[i].hot_send_wallet_address, (amount), warmWalletData.receiveAddress.address);
+                        feeValue = (reposneData / 1e9)
+                        estimateFee = feeValue
+                        exactSendAmount = amount;
+                        feeRateValue = 0.0
+                      } else if (coinData[i].coin_code == 'txrp' || coinData[i].coinData[i].coin_code == 'xrp') {
+                        var feesValue = parseFloat(45 / 1e6).toFixed(8)
+                        estimateFee = feesValue;
+                        exactSendAmount = amount - 45;
+                        feeValue = parseFloat(45 / 1000000).toFixed(8)
+                        feeRateValue = 0.0
+                      } else {
+                        amountToBeSend = amount - feesValue;
+                        var getFeeValue = await module
+                          .exports
+                          .getNetworkFee(coinData[i].coin_code, coinData[i].hot_send_wallet_address, parseFloat(amountToBeSend), warmWalletData.receiveAddress.address);
+                        console.log("getFeeValue", getFeeValue);
+                        var size = getFeeValue.size; // in bytes
+                        console.log("size", size);
+                        var get_sizefor_tx = size / 1024; // in kb
+                        console.log("get_sizefor_tx", get_sizefor_tx)
+                        var amount_fee_rate = feesValue * get_sizefor_tx
+                        exactSendAmount = parseFloat(amount) - parseFloat(2 * (getFeeValue.fee));
+                        feeValue = (parseFloat(2 * getFeeValue.fee) / 1e8).toFixed(8)
+                        estimateFee = (parseFloat(2 * getFeeValue.fee) / 1e8).toFixed(8);
+                        exactSendAmount = parseFloat(amount).toFixed(8);
+                        console.log(exactSendAmount)
+                        feeRateValue = parseInt(amount_fee_rate);
+                        console.log("======SEND======", feeRateValue);
+                      }
+
+                      console.log("exactSendAmount", exactSendAmount)
+                      console.log(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_send_wallet_address)
+                      if ((parseFloat(exactSendAmount) >= thresholdValue)) {
+                        if (warmWalletData.receiveAddress.address != undefined) {
+                          var sendTransaction = await module.exports.send(warmWalletData.receiveAddress.address, exactSendAmount, feeRateValue, coinData[i].coin_code, coinData[i].hot_send_wallet_address);
+                          console.log(sendTransaction);
+                          await cronSend("After Send Send");
+                          var division = 1e8;
+                          if ((coinData[i].coin_code != "teth" && coinData[i].coin_code != 'txrp') && coinData[i].coin_code != "eth" && coinData[i].coin_code != 'xrp' && coinData[i].iserc != true) {
+                            exactSendAmount = parseFloat(exactSendAmount / 1e8).toFixed(8)
+                          } else if (coinData[i].coin_code == "teth" || coinData[i].coin_code == "eth" || coinData[i].iserc == true) {
+                            exactSendAmount = parseFloat(exactSendAmount / 1e18).toFixed(8)
+                            division = 1e18;
+                          } else if (coinData[i].coin_code == "xrp" || coinData[i].coin_code == "txrp") {
+                            exactSendAmount = parseFloat(exactSendAmount / 1e6).toFixed(8);
+                            division = 1e6;
+                          }
+                          var transactionDetails = {
+                            coin_id: coinData[i].id,
+                            source_address: data.receiveAddress.address,
+                            destination_address: warmWalletData.receiveAddress.address,
+                            user_id: 36,
+                            amount: (exactSendAmount),
+                            transaction_type: 'send',
+                            is_executed: true,
+                            transaction_id: sendTransaction.txid,
+                            faldax_fee: 0,
+                            actual_network_fees: (parseFloat(sendTransaction.transfer.feeString / division).toFixed(8)),
+                            estimated_network_fees: (parseFloat(estimateFee / division).toFixed(8)),
+                            is_done: true,
+                            actual_amount: parseFloat(amount / division).toFixed(8),
+                            is_admin: true,
+                            residual_amount: (parseFloat(estimateFee).toFixed(8) - parseFloat(sendTransaction.transfer.feeString / division).toFixed(8)),
+                            transaction_from: "Residual Send to Warmwallet"
+                          }
+                          await residualTransactionModel
+                            .query()
+                            .insert(transactionDetails);
+
+                          var amountValue = (exactSendAmount);
+                          var balanceUpdate = parseFloat(adminAddress.balance) + parseFloat(amountValue)
+                          console.log("balanceUpdate", balanceUpdate);
+                          var placedBalanceUpdate = parseFloat(adminAddress.placed_balance) + parseFloat(amountValue)
+                          var walletBalanceUpdate = await Wallet
+                            .query()
+                            .where('deleted_at', null)
+                            .andWhere('coin_id', coinData[i].id)
+                            .andWhere('user_id', 36)
+                            .andWhere('is_admin', true)
+                            .patch({
+                              "balance": balanceUpdate,
+                              "placed_balance": placedBalanceUpdate
+                            })
+                          await cronSend("After Balance Update Send");
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -1843,8 +1837,5 @@ class CronController extends AppController {
           }
         }
       }
-    }
-  }
-}
 
 module.exports = new CronController();
