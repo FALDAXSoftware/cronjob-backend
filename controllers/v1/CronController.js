@@ -738,6 +738,8 @@ class CronController extends AppController {
         .exports
         .getEventData();
       console.log("data", data)
+      data = JSON.parse(data);
+      data = data.data;
       var tradeData = await SimplexTradeHistoryModel
         .query()
         .select()
@@ -754,7 +756,7 @@ class CronController extends AppController {
 
       // return 1;
       for (var i = 0; i < tradeData.length; i++) {
-        if (data != undefined && (data.events).length > 0) {
+        if (data != undefined && data.events.length > 0) {
           for (var j = 0; j < data.events.length; j++) {
             var payment_data = JSON.stringify(data.events[j].payment);
             payment_data = JSON.parse(payment_data);
@@ -984,7 +986,7 @@ class CronController extends AppController {
           })
         }
         // Send Email
-        if( response.body.res == "ACCEPT" ){
+        if (response.body.res == "ACCEPT") {
           await module.exports.email("kyc_approved", user)
         }
 
@@ -1068,7 +1070,7 @@ class CronController extends AppController {
         let coins = await Coins
           .query()
           .where('deleted_at', null)
-          .andWhere('is_active',true)
+          .andWhere('is_active', true)
           .orderBy('id', 'DESC');
 
         let coinArray = [];
@@ -1627,7 +1629,7 @@ class CronController extends AppController {
 
     if (coinData && coinData != undefined && coinData.length > 0) {
       for (var i = 0; i < coinData.length; i++) {
-        if ( coinData[i].coin_code != "SUSU") {
+        if (coinData[i].coin_code != "SUSU") {
           console.log("coinData[i]", coinData[i]);
           if (coinData[i].hot_send_wallet_address != null) {
             var data = await module.exports.getWalletData(coinData[i].hot_send_wallet_address, coinData[i].coin_code)
