@@ -40,6 +40,7 @@ var TempCoinmarketcap = require('../../models/TempCoinMarketCap');
 var CurrencyConversionModel = require('../../models/CurrencyConversion');
 var TransactionTableModel = require('../../models/TransactionTable');
 var residualTransactionModel = require('../../models/ResidualTransactions');
+var currencyConversionHelper = require('../../helpers/get-currency-price');
 
 var request = require('request');
 var xmlParser = require('xml2json');
@@ -309,10 +310,10 @@ class CronController extends AppController {
       "url": "Cron Function",
       "type": "Enter"
     }, "Entering the function")
-    // var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
-    // var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
-    var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-    var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
+    var key = [63, 17, 35, 31, 99, 50, 42, 86, 89, 80, 47, 14, 12, 98, 44, 78];
+    var iv = [45, 56, 89, 10, 98, 54, 13, 27, 82, 61, 53, 86, 67, 96, 94, 51]
+    // var key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    // var iv = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
 
     // When ready to decrypt the hex string, convert it back to bytes
     var encryptedBytes = aesjs
@@ -519,6 +520,7 @@ class CronController extends AppController {
         .getDecryptData(keyValue);
 
       var promise = await new Promise(async function (resolve, reject) {
+        console.log(event_id)
         await request
           .get(process.env.SIMPLEX_BACKEND_URL + "/simplex/delete-event-data/" + event_id, {
             headers: {
@@ -526,6 +528,7 @@ class CronController extends AppController {
               'Content-Type': 'application/json'
             }
           }, function (err, res, body) {
+            console.log(res.body)
             return (res.body)
           });
       })
@@ -544,7 +547,7 @@ class CronController extends AppController {
         "user_id": "user_simplex_delete_event_data",
         "url": "Cron Function",
         "type": "Error"
-      }, error)
+      }, err)
     }
   }
 
@@ -571,6 +574,7 @@ class CronController extends AppController {
               'X-token': 'faldax-simplex-backend'
             }
           }, function (err, res, body) {
+            console.log(body)
             resolve(body);
           });
       })
@@ -735,7 +739,10 @@ class CronController extends AppController {
       var data = await module
         .exports
         .getEventData();
-      console.log("data", data)
+      // console.log("data", data)
+      data = JSON.parse(data)
+      data = data.data
+      // data = data.data
       var tradeData = await SimplexTradeHistoryModel
         .query()
         .select()
@@ -751,11 +758,13 @@ class CronController extends AppController {
       }, data)
 
       // return 1;
+      console.log("data.events.length", data.events.length)
       for (var i = 0; i < tradeData.length; i++) {
-        if (data != undefined && (data.events).length > 0) {
+        if (data != undefined && data.events.length > 0) {
           for (var j = 0; j < data.events.length; j++) {
             var payment_data = JSON.stringify(data.events[j].payment);
             payment_data = JSON.parse(payment_data);
+            console.log("payment_data", payment_data)
             var payment_status = data.events[j]
             if (payment_data.id == tradeData[i].payment_id && payment_status.name == "payment_request_submitted") {
               await module.exports.deleteEvent(data.events[j].event_id)
@@ -951,7 +960,7 @@ class CronController extends AppController {
           .where('id', kyc_details.id)
           .patch({
             'direct_response': response.body.res,
-            'webhook_response': null,
+            'webhook_response': (response.body.res == "ACCEPT") ? (response.body.res) : null,
             'mtid': response.body.mtid,
             'comments': response.body.frd,
             'status': true,
@@ -1041,109 +1050,138 @@ class CronController extends AppController {
 
   // Adding the fiat price fiat from Coin Market Cap
   async addPriceFromCoinmarketData() {
+    console.log("INSIDE COIN MARKET CAP")
     await logger.info({
       "module": "Cron CoinMarketCap",
       "user_id": "user_marketcap",
       "url": "Cron Function",
       "type": "Enter"
     }, "Entering the function")
-    var keyValue = await module.exports.getDecryptData(process.env.COINMARKETCAP_MARKETPRICE)
-    await request({
-      url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20',
-      method: "GET",
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CMC_PRO_API_KEY': keyValue
-      },
-      json: true
-    }, async function (error, response, body) {
-      try {
-        let coins = await Coins.find({
-          deleted_at: null,
-          is_active: true
-        });
-        let coinArray = [];
-        for (let index = 0; index < coins.length; index++) {
-          const element = coins[index];
-          coinArray.push(element.coin)
-        }
-        var resData = body.data
-        for (var i = 0; i < resData.length; i++) {
-          // Store in Temp Table
-          let price_object = {
-            coin: resData[i].symbol,
-            price: resData[i].quote.USD.price,
-            market_cap: resData[i].quote.USD.market_cap,
-            percent_change_1h: resData[i].quote.USD.percent_change_1h,
-            percent_change_24h: resData[i].quote.USD.percent_change_24h,
-            percent_change_7d: resData[i].quote.USD.percent_change_7d,
-            volume_24h: resData[i].quote.USD.volume_24h
-          };
-          let accountClass = await TempCoinmarketcap
-            .query()
-            .insert(price_object);
+    // var keyValue = await module.exports.getDecryptData(process.env.COINMARKETCAP_MARKETPRICE)
+    // await request({
+    //   url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20',
+    //   method: "GET",
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //     'X-CMC_PRO_API_KEY': keyValue
+    //   },
+    //   json: true
+    // }, async function (error, response, body) {
+    //   try {
+    //     let coins = await Coins.find({
+    //       deleted_at: null,
+    //       is_active: true
+    //     });
+    //     let coinArray = [];
+    //     for (let index = 0; index < coins.length; index++) {
+    //       const element = coins[index];
+    //       coinArray.push(element.coin)
+    //     }
+    //     var resData = body.data
+    //     for (var i = 0; i < resData.length; i++) {
+    //       // Store in Temp Table
+    //       let price_object = {
+    //         coin: resData[i].symbol,
+    //         price: resData[i].quote.USD.price,
+    //         market_cap: resData[i].quote.USD.market_cap,
+    //         percent_change_1h: resData[i].quote.USD.percent_change_1h,
+    //         percent_change_24h: resData[i].quote.USD.percent_change_24h,
+    //         percent_change_7d: resData[i].quote.USD.percent_change_7d,
+    //         volume_24h: resData[i].quote.USD.volume_24h
+    //       };
+    //       let accountClass = await TempCoinmarketcap
+    //         .query()
+    //         .insert(price_object);
 
-          // Update Currency conversion table
-          if (coinArray.includes(currencyData.data[i].symbol)) {
-            let existCurrencyData = await CurrencyConversionModel
-              .query()
-              .first()
-              .where('deleted_at', null)
-              .andWhere('symbol', currencyData.data[i].symbol)
-              .orderBy('id', 'DESC');
-            if (existCurrencyData) {
-              // var currency_data = await CurrencyConversionModel
-              //   .update({
-              //     coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id
-              //   })
-              //   .set({
-              //     quote: currencyData.data[i].quote
-              //   })
-              //   .fetch();
-              var currency_data = await CurrencyConversionModel
-                .query()
-                .first()
-                .where('coin_id', coins[coinArray.indexOf(currencyData.data[i].symbol)].id)
-                .patch({
-                  "quote": currencyData.data[i].quote
-                });
-            } else {
-              // var currency_data = await CurrencyConversionModel
-              //   .create({
-              //     coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id,
-              //     quote: currencyData.data[i].quote,
-              //     symbol: currencyData.data[i].symbol,
-              //     created_at: new Date()
-              //   })
-              //   .fetch();
-              var currency_data = await CurrencyConversionModel
-                .query()
-                .insert({
-                  coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id,
-                  quote: currencyData.data[i].quote,
-                  symbol: currencyData.data[i].symbol,
-                  created_at: new Date()
-                });
-            }
-          }
+    //       // Update Currency conversion table
+    //       if (coinArray.includes(currencyData.data[i].symbol)) {
+    //         let existCurrencyData = await CurrencyConversionModel
+    //           .query()
+    //           .first()
+    //           .where('deleted_at', null)
+    //           .andWhere('symbol', currencyData.data[i].symbol)
+    //           .orderBy('id', 'DESC');
+    //         if (existCurrencyData) {
+    //           // var currency_data = await CurrencyConversionModel
+    //           //   .update({
+    //           //     coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id
+    //           //   })
+    //           //   .set({
+    //           //     quote: currencyData.data[i].quote
+    //           //   })
+    //           //   .fetch();
+    //           var currency_data = await CurrencyConversionModel
+    //             .query()
+    //             .first()
+    //             .where('coin_id', coins[coinArray.indexOf(currencyData.data[i].symbol)].id)
+    //             .patch({
+    //               "quote": currencyData.data[i].quote
+    //             });
+    //         } else {
+    //           // var currency_data = await CurrencyConversionModel
+    //           //   .create({
+    //           //     coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id,
+    //           //     quote: currencyData.data[i].quote,
+    //           //     symbol: currencyData.data[i].symbol,
+    //           //     created_at: new Date()
+    //           //   })
+    //           //   .fetch();
+    //           var currency_data = await CurrencyConversionModel
+    //             .query()
+    //             .insert({
+    //               coin_id: coins[coinArray.indexOf(currencyData.data[i].symbol)].id,
+    //               quote: currencyData.data[i].quote,
+    //               symbol: currencyData.data[i].symbol,
+    //               created_at: new Date()
+    //             });
+    //         }
+    //       }
 
+    //     }
+    //     await logger.info({
+    //       "module": "Cron CoinMarket Cap",
+    //       "user_id": "user_marketcap",
+    //       "url": "Cron Function",
+    //       "type": "Success"
+    //     }, "CoinMarketCap Updated successfully")
+    //   } catch (error) {
+    //     console.log('error', error);
+    //     await logger.error({
+    //       "module": "Cron CoinMarket Cap",
+    //       "user_id": "user_marketcap",
+    //       "url": "Cron Function",
+    //       "type": "Error"
+    //     }, error)
+    //   }
+    // })
+
+    var coinData = await Coins
+      .query()
+      .select('coin_name', 'coin_code', 'coin')
+      .where('is_active', true)
+      .andWhere('deleted_at', null)
+      .orderBy('id', 'ASC');
+
+    console.log("coinData ", coinData)
+
+    var currency = ['USD', 'EUR', 'INR']
+    var object = {}
+    for (var i = 0; i < coinData.length; i++) {
+      for (var j = 0; j < currency.length; j++) {
+        var dataValue = await currencyConversionHelper.convertValue(coinData[i].coin_name, currency[j])
+        dataValue = JSON.stringify(dataValue)
+        console.log(dataValue)
+        dataValue = JSON.parse(dataValue)
+        console.log("data value" + dataValue['USD'] + " for coin " + coinData[i].coin_name)
+        var value = currency[j]
+        value = {
+          "price": dataValue.current_price,
+          "price_change_24h": dataValue.price_change_24h,
+          "percent_change_24h": dataValue.price_change_percentage_24h
         }
-        await logger.info({
-          "module": "Cron CoinMarket Cap",
-          "user_id": "user_marketcap",
-          "url": "Cron Function",
-          "type": "Success"
-        }, "CoinMarketCap Updated successfully")
-      } catch (error) {
-        console.log('error', error);
-        await logger.error({
-          "module": "Cron CoinMarket Cap",
-          "user_id": "user_marketcap",
-          "url": "Cron Function",
-          "type": "Error"
-        }, error)
+        object.push()
       }
-    })
+    }
   }
 
   // Function for getting the network Fee Value
