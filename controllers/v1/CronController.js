@@ -316,6 +316,9 @@ class CronController extends AppController {
     var key = JSON.parse(process.env.SECRET_KEY);
     var iv = JSON.parse(process.env.SECRET_IV);
 
+    console.log(key);
+    console.log(iv);
+
     // When ready to decrypt the hex string, convert it back to bytes
     var encryptedBytes = aesjs
       .utils
@@ -546,7 +549,7 @@ class CronController extends AppController {
         "user_id": "user_simplex_delete_event_data",
         "url": "Cron Function",
         "type": "Error"
-      }, error)
+      }, err)
     }
   }
 
@@ -755,6 +758,7 @@ class CronController extends AppController {
       }, data)
 
       // return 1;
+      console.log("data.events.length", data.events.length)
       for (var i = 0; i < tradeData.length; i++) {
         if (data != undefined && data.events.length > 0) {
           for (var j = 0; j < data.events.length; j++) {
