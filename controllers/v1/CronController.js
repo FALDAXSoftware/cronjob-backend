@@ -1062,7 +1062,7 @@ class CronController extends AppController {
     }, "Entering the function")
     var keyValue = await module.exports.getDecryptData(process.env.COINMARKETCAP_MARKETPRICE)
     await request({
-      url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20',
+      url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=USD&start=1&limit=20',
       method: "GET",
       headers: {
         'Content-Type': 'application/json',
