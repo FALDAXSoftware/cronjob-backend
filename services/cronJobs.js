@@ -5,10 +5,11 @@ var cronData = require("../controllers/v1/CronController");
 
 // On Every Minute
 cron.schedule('* * * * *', async (req, res, next) => {
-    console.log("Started cron....");
+    // console.log("Started cron....");
     await cronData.bitcoinistNewsUpdate();
     await cronData.bitcoinNews();
     await cronData.coinTelegraph();
+    // await cronData.addCoinGechkoValue()
 });
 
 
@@ -18,7 +19,7 @@ cron.schedule('* * * * *', async (req, res, next) => {
 })
 
 cron.schedule('* * * * *', async (req, res, next) => {
-    // await cronData.checkTheresoldNotification();
+    await cronData.checkTheresoldNotification();
 });
 
 
@@ -42,7 +43,8 @@ cron.schedule('* * * * *', async (req, res, next) => {
 });
 
 cron.schedule('* * * * *', async (req, res, next) => {
-    await cronData.addPriceFromCoinmarketData();
+    // await cronData.addPriceFromCoinmarketData();
+    await cronData.addCoinGechkoValue()
 })
 cron.schedule('* * * * *', async (req, res, next) => {
     await cronData.checkPaymentStatus();

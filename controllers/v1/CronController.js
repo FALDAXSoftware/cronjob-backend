@@ -40,6 +40,7 @@ var TempCoinmarketcap = require('../../models/TempCoinMarketCap');
 var CurrencyConversionModel = require('../../models/CurrencyConversion');
 var TransactionTableModel = require('../../models/TransactionTable');
 var residualTransactionModel = require('../../models/ResidualTransactions');
+var coinGechkoValue = require("../../helpers/get-currency-price");
 
 var request = require('request');
 var xmlParser = require('xml2json');
@@ -1847,6 +1848,25 @@ class CronController extends AppController {
           }
         }
       }
+    }
+  }
+
+  async addCoinGechkoValue() {
+    try {
+      // var coinData = await Coins
+      //   .query()
+      //   .select()
+      //   .where("deleted_at", null)
+      //   .andWhere("is_active", true)
+      //   .orderBy("id", "DESC");
+
+      // if (coinData != undefined) {
+      //   for (var i = 0; i < coinData.length; i++) {
+      var data = await coinGechkoValue.convertValue()
+      //   }
+      // }
+    } catch (error) {
+      console.log(error)
     }
   }
 }
