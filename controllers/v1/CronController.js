@@ -1853,18 +1853,7 @@ class CronController extends AppController {
 
   async addCoinGechkoValue() {
     try {
-      // var coinData = await Coins
-      //   .query()
-      //   .select()
-      //   .where("deleted_at", null)
-      //   .andWhere("is_active", true)
-      //   .orderBy("id", "DESC");
-
-      // if (coinData != undefined) {
-      //   for (var i = 0; i < coinData.length; i++) {
       var data = await coinGechkoValue.convertValue()
-      //   }
-      // }
     } catch (error) {
       console.log(error)
     }
