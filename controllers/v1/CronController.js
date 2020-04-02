@@ -40,6 +40,7 @@ var TempCoinmarketcap = require('../../models/TempCoinMarketCap');
 var CurrencyConversionModel = require('../../models/CurrencyConversion');
 var TransactionTableModel = require('../../models/TransactionTable');
 var residualTransactionModel = require('../../models/ResidualTransactions');
+var coinGechkoValue = require("../../helpers/get-currency-price");
 
 var request = require('request');
 var xmlParser = require('xml2json');
@@ -826,7 +827,7 @@ class CronController extends AppController {
   }
 
   // Get Fiat Value from JST
-  async getMarketPrice(symbol) {
+  async getMarketPrice(symbol, type) {
     try {
       await logger.info({
         "module": "JST Market Data",
@@ -834,8 +835,9 @@ class CronController extends AppController {
         "url": "Cron Function",
         "type": "Enter"
       }, "Entering the function")
+      console.log(process.env.JST_MARKET_URL + '/Market/GetQuoteSnapshot?symbol=' + symbol + '&mdEntyType=' + type)
       request({
-        url: process.env.JST_MARKET_URL + '/Market/GetQuote?symbol=' + symbol,
+        url: process.env.JST_MARKET_URL + '/Market/GetQuoteSnapshot?symbol=' + symbol + '&mdEntyType=' + type,
         method: "POST",
         headers: {
           'Content-Type': 'application/json'
@@ -848,25 +850,51 @@ class CronController extends AppController {
         if (body.error) {
           return (body);
         }
+
+        console.log("body.MDEntries", body.MDEntries)
+
+        if ((body.MDEntries).length > 0) {
+          let object_data = {
+            coin: symbol,
+            type: type,
+            market_snapshot: body,
+          };
+
+          if (type == 1) {
+            object_data.ask_price = body.MDEntries[0].MDEntryPx;
+            object_data.ask_size = body.MDEntries[0].MDEntrySize;
+            object_data.bid_price = 0.0;
+            object_data.bid_size = 0.0;
+          } else {
+            object_data.ask_price = 0.0;
+            object_data.ask_size = 0.0;
+            object_data.bid_price = body.MDEntries[0].MDEntryPx;
+            object_data.bid_size = body.MDEntries[0].MDEntrySize;
+          }
+          console.log("object_data", object_data)
+          var dataInsertValue = await PriceHistoryModel
+            .query()
+            .insert(object_data);
+        }
         // Add data in table
-        let object_data = {
-          coin: symbol,
-          ask_price: body.Ask,
-          ask_size: body.AskSize,
-          bid_price: body.Bid,
-          bid_size: body.BidSize,
-        };
-        await PriceHistoryModel
-          .query()
-          .insert(object_data);
+        // let object_data = {
+        //   coin: symbol,
+        //   ask_price: body.Ask,
+        //   ask_size: body.AskSize,
+        //   bid_price: body.Bid,
+        //   bid_size: body.BidSize,
+        // };
+        // await PriceHistoryModel
+        //   .query()
+        //   .insert(object_data);
         //ends
 
-        await logger.info({
-          "module": "JST Market Data",
-          "user_id": "user_jst",
-          "url": "Cron Function",
-          "type": "Success"
-        }, "JST added successfully")
+        // await logger.info({
+        //   "module": "JST Market Data",
+        //   "user_id": "user_jst",
+        //   "url": "Cron Function",
+        //   "type": "Success"
+        // }, "JST added successfully")
         return (body);
       });
     } catch (error) {
@@ -1062,7 +1090,7 @@ class CronController extends AppController {
     }, "Entering the function")
     var keyValue = await module.exports.getDecryptData(process.env.COINMARKETCAP_MARKETPRICE)
     await request({
-      url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=' + process.env.CURRENCY + '&start=1&limit=20',
+      url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?convert=USD&start=1&limit=20',
       method: "GET",
       headers: {
         'Content-Type': 'application/json',
@@ -1820,6 +1848,25 @@ class CronController extends AppController {
           }
         }
       }
+    }
+  }
+
+  async addCoinGechkoValue() {
+    try {
+      // var coinData = await Coins
+      //   .query()
+      //   .select()
+      //   .where("deleted_at", null)
+      //   .andWhere("is_active", true)
+      //   .orderBy("id", "DESC");
+
+      // if (coinData != undefined) {
+      //   for (var i = 0; i < coinData.length; i++) {
+      var data = await coinGechkoValue.convertValue()
+      //   }
+      // }
+    } catch (error) {
+      console.log(error)
     }
   }
 }
