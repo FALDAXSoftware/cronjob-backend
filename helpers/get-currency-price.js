@@ -9,15 +9,17 @@ var convertValue = async (coin) => {
         // var coin = coin.toLowerCase();
         var currencyData = [];
         var value = [];
-        var coinData = await coinsModel
-            .query()
-            .select('coin_name')
-            .where("is_active", true)
-            .andWhere("deleted_at", null)
-            .orderBy("id", "DESC");
-        for (var i = 0; i < coinData.length; i++) {
-            value.push((coinData[i].coin_name).toLowerCase())
+        var coinSql = `SELECT coins.coin, currency_conversion.coin_name
+                        FROM coins LEFT JOIN currency_conversion
+                        ON currency_conversion.coin_id = coins.id
+                        WHERE coins.deleted_at IS NULL AND coins.is_active = true AND currency_conversion.coin_name IS NOT NULL`
+        var coinData = await coinsModel.knex().raw(coinSql)
+        // console.log(coinData.rowCount)
+        for (var i = 0; i < coinData.rowCount; i++) {
+            // console.log(coinData.rows[i].coin_name)
+            value.push(coinData.rows[i].coin_name)
         }
+        // console.log(value)
         await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=` + value + `&vs_currencies=usd%2Ceur%2Cinr`, {
             method: 'GET',
             headers: {
