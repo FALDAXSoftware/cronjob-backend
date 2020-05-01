@@ -94,9 +94,10 @@ class CronController extends AppController {
           let records = await NewsModel
             .query()
             .where('link', element.link)
-            .orderBy('id', 'DESC');
+            .orderBy('id', 'DESC')
+            .limit(1);
 
-          if (records.length == 0) {
+          if (records) {
             await NewsModel
               .query()
               .insert({
@@ -152,12 +153,13 @@ class CronController extends AppController {
             .where({
               'link': element.link
             })
-            .orderBy('id', 'DESC');
+            .orderBy('id', 'DESC')
+            .limit(1);
 
           let parser = new DomParser();
           htmlDoc = parser.parseFromString(element.description, "text/xml");
 
-          if (records.length == 0) {
+          if (records) {
             await NewsModel
               .query()
               .insert({
@@ -218,7 +220,8 @@ class CronController extends AppController {
             .where({
               'link': element.link
             })
-            .orderBy('id', 'DESC');
+            .orderBy('id', 'DESC')
+            .limit(1);
 
           if (records.length == 0) {
             await NewsModel
@@ -408,106 +411,106 @@ class CronController extends AppController {
   }
 
   // User Threshold Notification
-  async checkTheresoldNotification() {
-    try {
-      await logger.info({
-        "module": "Admin Threshold Notification",
-        "user_id": "admin_threshold",
-        "url": "Cron Function",
-        "type": "Enter"
-      }, "Entering the threshold function")
-      // //Getting User Notification Details
-      let user = await ThresholdModel
-        .query()
-        .where({
-          'deleted_at': null
-        });
+//   async checkTheresoldNotification() {
+//     try {
+//       await logger.info({
+//         "module": "Admin Threshold Notification",
+//         "user_id": "admin_threshold",
+//         "url": "Cron Function",
+//         "type": "Enter"
+//       }, "Entering the threshold function")
+//       // //Getting User Notification Details
+//       let user = await ThresholdModel
+//         .query()
+//         .where({
+//           'deleted_at': null
+//         });
 
-      var data = '/USD'
+//       var data = '/USD'
 
-      var values = await PriceHistoryModel
-        .query()
-        .where('coin', 'like', '%' + data + '%')
-        .andWhere('ask_price', '>', 0)
-        .orderBy('coin', 'DESC')
-        .orderBy('created_at', 'DESC')
-        .groupBy('coin')
-        .groupBy('id')
-        .limit(100);
+//       var values = await PriceHistoryModel
+//         .query()
+//         .where('coin', 'like', '%' + data + '%')
+//         .andWhere('ask_price', '>', 0)
+//         .orderBy('coin', 'DESC')
+//         .orderBy('created_at', 'DESC')
+//         .groupBy('coin')
+//         .groupBy('id')
+//         .limit(100);
 
-      for (let index = 0; index < user.length; index++) {
-        const element = user[index];
-        var assetValue = element.asset;
-        var userData = await UserModel
-          .query()
-          .first()
-          .where('id', element.user_id)
-          .andWhere('is_active', true)
-          .andWhere('deleted_at', null)
-          .andWhere('is_verified', true)
-          .orderBy('id', 'DESC');
+//       for (let index = 0; index < user.length; index++) {
+//         const element = user[index];
+//         var assetValue = element.asset;
+//         var userData = await UserModel
+//           .query()
+//           .first()
+//           .where('id', element.user_id)
+//           .andWhere('is_active', true)
+//           .andWhere('deleted_at', null)
+//           .andWhere('is_verified', true)
+//           .orderBy('id', 'DESC');
 
-        for (var i = 0; i < assetValue.length; i++) {
-          for (var k = 0; k < values.length; k++) {
-            var coinValue = assetValue[i].coin + '/USD'
-            if (values[k].coin == coinValue) {
-              userData.coinName = assetValue[i].coin
-              if (assetValue[i].upper_limit != undefined && assetValue[i].upper_limit != null) {
-                if (values[k].ask_price >= assetValue[i].upper_limit) {
-                  if (userData) {
-                    userData.limitType = "Upper Limit"
-                    if (assetValue[i].is_email_notification == true || assetValue[i].is_email_notification == "true") {
-                      if (userData.email != undefined) {
-                        await module.exports.email("thresold_notification", userData)
-                      }
-                    }
-                    if (assetValue[i].is_sms_notification == true || assetValue[i].is_sms_notification == "true") {
-                      if (userData.phone_number != undefined)
-                        await module.exports.text("thresold_notification", userData)
-                    }
-                  }
-                }
-              }
+//         for (var i = 0; i < assetValue.length; i++) {
+//           for (var k = 0; k < values.length; k++) {
+//             var coinValue = assetValue[i].coin + '/USD'
+//             if (values[k].coin == coinValue) {
+//               userData.coinName = assetValue[i].coin
+//               if (assetValue[i].upper_limit != undefined && assetValue[i].upper_limit != null) {
+//                 if (values[k].ask_price >= assetValue[i].upper_limit) {
+//                   if (userData) {
+//                     userData.limitType = "Upper Limit"
+//                     if (assetValue[i].is_email_notification == true || assetValue[i].is_email_notification == "true") {
+//                       if (userData.email != undefined) {
+//                         await module.exports.email("thresold_notification", userData)
+//                       }
+//                     }
+//                     if (assetValue[i].is_sms_notification == true || assetValue[i].is_sms_notification == "true") {
+//                       if (userData.phone_number != undefined)
+//                         await module.exports.text("thresold_notification", userData)
+//                     }
+//                   }
+//                 }
+//               }
 
-              if (assetValue[i].lower_limit != undefined && assetValue[i].lower_limit != null) {
-                if (values[k].ask_price <= assetValue[i].lower_limit) {
-                  if (userData) {
-                    userData.limitType = "Lower Limit";
-                    if (assetValue[i].is_email_notification == true || assetValue[i].is_email_notification == "true") {
-                      if (userData.email != undefined) {
-                        await module.exports.email("thresold_notification", userData)
-                      }
-                    }
-                    if (assetValue[i].is_sms_notification == true || assetValue[i].is_sms_notification == "true") {
-                      if (userData.phone_number != undefined)
-                        await module.exports.text("thresold_notification", userData)
-                    }
-                  }
-                }
-              }
+//               if (assetValue[i].lower_limit != undefined && assetValue[i].lower_limit != null) {
+//                 if (values[k].ask_price <= assetValue[i].lower_limit) {
+//                   if (userData) {
+//                     userData.limitType = "Lower Limit";
+//                     if (assetValue[i].is_email_notification == true || assetValue[i].is_email_notification == "true") {
+//                       if (userData.email != undefined) {
+//                         await module.exports.email("thresold_notification", userData)
+//                       }
+//                     }
+//                     if (assetValue[i].is_sms_notification == true || assetValue[i].is_sms_notification == "true") {
+//                       if (userData.phone_number != undefined)
+//                         await module.exports.text("thresold_notification", userData)
+//                     }
+//                   }
+//                 }
+//               }
 
-            }
-          }
-        }
-      }
+//             }
+//           }
+//         }
+//       }
 
-      await logger.info({
-        "module": "Admin Threshold Notifcation",
-        "user_id": "admin_threshold",
-        "url": "Cron Function",
-        "type": "Success"
-      }, "Threshold Notification send successfully")
-      return (1)
-    } catch (error) {
-      console.log(error)
-      await logger.error({
-        "module": "Admin Threshold Notifcation",
-        "user_id": "admin_threshold",
-        "url": "Cron Function",
-        "type": "Error"
-      }, error)
-    }
-  }
+//       await logger.info({
+//         "module": "Admin Threshold Notifcation",
+//         "user_id": "admin_threshold",
+//         "url": "Cron Function",
+//         "type": "Success"
+//       }, "Threshold Notification send successfully")
+//       return (1)
+//     } catch (error) {
+//       console.log(error)
+//       await logger.error({
+//         "module": "Admin Threshold Notifcation",
+//         "user_id": "admin_threshold",
+//         "url": "Cron Function",
+//         "type": "Error"
+//       }, error)
+//     }
+//   }
 
   // Deleting the event after confirmed
   async deleteEvent(event_id) {

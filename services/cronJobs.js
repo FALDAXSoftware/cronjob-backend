@@ -4,7 +4,7 @@ var cron = require('node-cron');
 var cronData = require("../controllers/v1/CronController");
 
 // On Every Minute
-cron.schedule('* * * * *', async (req, res, next) => {
+cron.schedule('*/30 * * * *', async (req, res, next) => {
     // console.log("Started cron....");
     await cronData.bitcoinistNewsUpdate();
     await cronData.bitcoinNews();
@@ -19,7 +19,7 @@ cron.schedule('* * * * *', async (req, res, next) => {
 })
 
 cron.schedule('* * * * *', async (req, res, next) => {
-    await cronData.checkTheresoldNotification();
+    // await cronData.checkTheresoldNotification();
 });
 
 
