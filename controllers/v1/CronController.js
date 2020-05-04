@@ -97,7 +97,7 @@ class CronController extends AppController {
             .orderBy('id', 'DESC')
             .limit(1);
 
-          if (records) {
+          if (records.length == 0) {
             await NewsModel
               .query()
               .insert({
@@ -159,7 +159,7 @@ class CronController extends AppController {
           let parser = new DomParser();
           htmlDoc = parser.parseFromString(element.description, "text/xml");
 
-          if (records) {
+          if (records.length == 0) {
             await NewsModel
               .query()
               .insert({
