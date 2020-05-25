@@ -993,6 +993,25 @@ class CronController extends AppController {
             'status': true,
           });
 
+        var user_data = await KYCModel
+          .query()
+          .first()
+          .select()
+          .where("deleted_at", null)
+          .andWhere("id", kyc_details.id)
+          .orderBy("id", "DESC");
+
+        if (response.body.res == "ACCEPT") {
+          var userData = await UserModel
+            .query()
+            .where("deleted_at", null)
+            .andWhere("id", user_data.user_id)
+            .andWhere("is_active", true)
+            .patch({
+              "account_tier": 1
+            });
+        }
+
         if (kyc_details.front_doc != null) {
           let profileData = {
             Bucket: S3BucketName,
