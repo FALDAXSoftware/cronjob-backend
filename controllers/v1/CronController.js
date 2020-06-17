@@ -411,106 +411,106 @@ class CronController extends AppController {
   }
 
   // User Threshold Notification
-//   async checkTheresoldNotification() {
-//     try {
-//       await logger.info({
-//         "module": "Admin Threshold Notification",
-//         "user_id": "admin_threshold",
-//         "url": "Cron Function",
-//         "type": "Enter"
-//       }, "Entering the threshold function")
-//       // //Getting User Notification Details
-//       let user = await ThresholdModel
-//         .query()
-//         .where({
-//           'deleted_at': null
-//         });
+  //   async checkTheresoldNotification() {
+  //     try {
+  //       await logger.info({
+  //         "module": "Admin Threshold Notification",
+  //         "user_id": "admin_threshold",
+  //         "url": "Cron Function",
+  //         "type": "Enter"
+  //       }, "Entering the threshold function")
+  //       // //Getting User Notification Details
+  //       let user = await ThresholdModel
+  //         .query()
+  //         .where({
+  //           'deleted_at': null
+  //         });
 
-//       var data = '/USD'
+  //       var data = '/USD'
 
-//       var values = await PriceHistoryModel
-//         .query()
-//         .where('coin', 'like', '%' + data + '%')
-//         .andWhere('ask_price', '>', 0)
-//         .orderBy('coin', 'DESC')
-//         .orderBy('created_at', 'DESC')
-//         .groupBy('coin')
-//         .groupBy('id')
-//         .limit(100);
+  //       var values = await PriceHistoryModel
+  //         .query()
+  //         .where('coin', 'like', '%' + data + '%')
+  //         .andWhere('ask_price', '>', 0)
+  //         .orderBy('coin', 'DESC')
+  //         .orderBy('created_at', 'DESC')
+  //         .groupBy('coin')
+  //         .groupBy('id')
+  //         .limit(100);
 
-//       for (let index = 0; index < user.length; index++) {
-//         const element = user[index];
-//         var assetValue = element.asset;
-//         var userData = await UserModel
-//           .query()
-//           .first()
-//           .where('id', element.user_id)
-//           .andWhere('is_active', true)
-//           .andWhere('deleted_at', null)
-//           .andWhere('is_verified', true)
-//           .orderBy('id', 'DESC');
+  //       for (let index = 0; index < user.length; index++) {
+  //         const element = user[index];
+  //         var assetValue = element.asset;
+  //         var userData = await UserModel
+  //           .query()
+  //           .first()
+  //           .where('id', element.user_id)
+  //           .andWhere('is_active', true)
+  //           .andWhere('deleted_at', null)
+  //           .andWhere('is_verified', true)
+  //           .orderBy('id', 'DESC');
 
-//         for (var i = 0; i < assetValue.length; i++) {
-//           for (var k = 0; k < values.length; k++) {
-//             var coinValue = assetValue[i].coin + '/USD'
-//             if (values[k].coin == coinValue) {
-//               userData.coinName = assetValue[i].coin
-//               if (assetValue[i].upper_limit != undefined && assetValue[i].upper_limit != null) {
-//                 if (values[k].ask_price >= assetValue[i].upper_limit) {
-//                   if (userData) {
-//                     userData.limitType = "Upper Limit"
-//                     if (assetValue[i].is_email_notification == true || assetValue[i].is_email_notification == "true") {
-//                       if (userData.email != undefined) {
-//                         await module.exports.email("thresold_notification", userData)
-//                       }
-//                     }
-//                     if (assetValue[i].is_sms_notification == true || assetValue[i].is_sms_notification == "true") {
-//                       if (userData.phone_number != undefined)
-//                         await module.exports.text("thresold_notification", userData)
-//                     }
-//                   }
-//                 }
-//               }
+  //         for (var i = 0; i < assetValue.length; i++) {
+  //           for (var k = 0; k < values.length; k++) {
+  //             var coinValue = assetValue[i].coin + '/USD'
+  //             if (values[k].coin == coinValue) {
+  //               userData.coinName = assetValue[i].coin
+  //               if (assetValue[i].upper_limit != undefined && assetValue[i].upper_limit != null) {
+  //                 if (values[k].ask_price >= assetValue[i].upper_limit) {
+  //                   if (userData) {
+  //                     userData.limitType = "Upper Limit"
+  //                     if (assetValue[i].is_email_notification == true || assetValue[i].is_email_notification == "true") {
+  //                       if (userData.email != undefined) {
+  //                         await module.exports.email("thresold_notification", userData)
+  //                       }
+  //                     }
+  //                     if (assetValue[i].is_sms_notification == true || assetValue[i].is_sms_notification == "true") {
+  //                       if (userData.phone_number != undefined)
+  //                         await module.exports.text("thresold_notification", userData)
+  //                     }
+  //                   }
+  //                 }
+  //               }
 
-//               if (assetValue[i].lower_limit != undefined && assetValue[i].lower_limit != null) {
-//                 if (values[k].ask_price <= assetValue[i].lower_limit) {
-//                   if (userData) {
-//                     userData.limitType = "Lower Limit";
-//                     if (assetValue[i].is_email_notification == true || assetValue[i].is_email_notification == "true") {
-//                       if (userData.email != undefined) {
-//                         await module.exports.email("thresold_notification", userData)
-//                       }
-//                     }
-//                     if (assetValue[i].is_sms_notification == true || assetValue[i].is_sms_notification == "true") {
-//                       if (userData.phone_number != undefined)
-//                         await module.exports.text("thresold_notification", userData)
-//                     }
-//                   }
-//                 }
-//               }
+  //               if (assetValue[i].lower_limit != undefined && assetValue[i].lower_limit != null) {
+  //                 if (values[k].ask_price <= assetValue[i].lower_limit) {
+  //                   if (userData) {
+  //                     userData.limitType = "Lower Limit";
+  //                     if (assetValue[i].is_email_notification == true || assetValue[i].is_email_notification == "true") {
+  //                       if (userData.email != undefined) {
+  //                         await module.exports.email("thresold_notification", userData)
+  //                       }
+  //                     }
+  //                     if (assetValue[i].is_sms_notification == true || assetValue[i].is_sms_notification == "true") {
+  //                       if (userData.phone_number != undefined)
+  //                         await module.exports.text("thresold_notification", userData)
+  //                     }
+  //                   }
+  //                 }
+  //               }
 
-//             }
-//           }
-//         }
-//       }
+  //             }
+  //           }
+  //         }
+  //       }
 
-//       await logger.info({
-//         "module": "Admin Threshold Notifcation",
-//         "user_id": "admin_threshold",
-//         "url": "Cron Function",
-//         "type": "Success"
-//       }, "Threshold Notification send successfully")
-//       return (1)
-//     } catch (error) {
-//       console.log(error)
-//       await logger.error({
-//         "module": "Admin Threshold Notifcation",
-//         "user_id": "admin_threshold",
-//         "url": "Cron Function",
-//         "type": "Error"
-//       }, error)
-//     }
-//   }
+  //       await logger.info({
+  //         "module": "Admin Threshold Notifcation",
+  //         "user_id": "admin_threshold",
+  //         "url": "Cron Function",
+  //         "type": "Success"
+  //       }, "Threshold Notification send successfully")
+  //       return (1)
+  //     } catch (error) {
+  //       console.log(error)
+  //       await logger.error({
+  //         "module": "Admin Threshold Notifcation",
+  //         "user_id": "admin_threshold",
+  //         "url": "Cron Function",
+  //         "type": "Error"
+  //       }, error)
+  //     }
+  //   }
 
   // Deleting the event after confirmed
   async deleteEvent(event_id) {
@@ -929,13 +929,13 @@ class CronController extends AppController {
       .first()
       .where('id', kyc_details.user_id)
       .orderBy('id', 'DESC');
-    console.log("user",user);  
+    console.log("user", user);
     let kycUploadDetails = {};
     if (!kyc_details.ssn) {
       kycUploadDetails.docCountry = kyc_details.country_code;
       kycUploadDetails.bco = kyc_details.country_code;
     }
-    console.log("kycUploadDetails 1",kycUploadDetails);  
+    console.log("kycUploadDetails 1", kycUploadDetails);
     if (!kyc_details.ssn) {
       await image2base64(process.env.AWS_S3_URL + kyc_details.front_doc)
         .then((response) => {
@@ -944,7 +944,7 @@ class CronController extends AppController {
           (error) => {
             console.log('error', error);
           })
-    console.log("kycUploadDetails 2",kycUploadDetails);  
+      console.log("kycUploadDetails 2", kycUploadDetails);
       await image2base64(process.env.AWS_S3_URL + kyc_details.back_doc)
         .then((response) => {
           kycUploadDetails.backsideImageData = response;
@@ -952,7 +952,7 @@ class CronController extends AppController {
           (error) => {
             console.log('error', error);
           })
-      console.log("kycUploadDetails 3",kycUploadDetails);  
+      console.log("kycUploadDetails 3", kycUploadDetails);
     }
 
     if (kyc_details.id_type == 1) {
@@ -964,7 +964,7 @@ class CronController extends AppController {
     } else {
       kycUploadDetails.ssn = kyc_details.ssn;
     }
-    console.log("kycUploadDetails 4",kycUploadDetails);  
+    console.log("kycUploadDetails 4", kycUploadDetails);
     kycUploadDetails.man = user.email;
     kycUploadDetails.bfn = kyc_details.first_name;
     kycUploadDetails.bln = kyc_details.last_name;
@@ -977,11 +977,11 @@ class CronController extends AppController {
     kycUploadDetails.bz = kyc_details.zip;
     // kycUploadDetails.dob = moment(kyc_details.dob, 'DD-MM-YYYY').format('YYYY-MM-DD');
     kycUploadDetails.dob = kyc_details.dob;
-    console.log("kycUploadDetails 5",kycUploadDetails);  
-    console.log("IDM_TOKEN",process.env.IDM_TOKEN);  
-    console.log("IDM_URL",process.env.IDM_URL);  
+    console.log("kycUploadDetails 5", kycUploadDetails);
+    console.log("IDM_TOKEN", process.env.IDM_TOKEN);
+    console.log("IDM_URL", process.env.IDM_URL);
     var idm_key = await module.exports.getDecryptData(process.env.IDM_TOKEN);
-    console.log("idm_key",idm_key);  
+    console.log("idm_key", idm_key);
     request.post({
       headers: {
         'Authorization': 'Basic ' + idm_key
@@ -989,9 +989,9 @@ class CronController extends AppController {
       url: process.env.IDM_URL,
       json: kycUploadDetails
     }, async function (error, response, body) {
-        console.log("IDM ERROR",error); 
+      console.log("IDM ERROR", error);
       try {
-          console.log("IDM IN",response); 
+        console.log("IDM IN", response);
         kyc_details.direct_response = response.body.res;
         kyc_details.webhook_response = null;
         await KYCModel
@@ -1031,9 +1031,9 @@ class CronController extends AppController {
           }
 
           s3bucket.deleteObject(profileData, function (err, response) {
-              console.log("S3 profile delete");
-              console.log("S3 Error", err);
-              console.log("S3 response", response);
+            console.log("S3 profile delete");
+            console.log("S3 Error", err);
+            console.log("S3 response", response);
             if (err) {
               console.log(err)
             } else { }
@@ -1046,9 +1046,9 @@ class CronController extends AppController {
           }
 
           s3bucket.deleteObject(profileData, function (err, response) {
-              console.log("S3 profile delete");
-              console.log("S3 Error", err);
-              console.log("S3 response", response);
+            console.log("S3 profile delete");
+            console.log("S3 Error", err);
+            console.log("S3 response", response);
             if (err) {
               console.log(err)
             } else { }
