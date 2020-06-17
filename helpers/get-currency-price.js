@@ -1,6 +1,7 @@
 var fetch = require('node-fetch')
 var coinsModel = require("../models/Coins");
 var currencyConversionModel = require("../models/CurrencyConversion");
+var tempCoinMarketModel = require("../models/TempCoinMarketCap");
 
 var convertValue = async (coin) => {
     var getConvertedValue;
@@ -14,10 +15,14 @@ var convertValue = async (coin) => {
                         ON currency_conversion.coin_id = coins.id
                         WHERE coins.deleted_at IS NULL AND coins.is_active = true AND currency_conversion.coin_name IS NOT NULL`
         var coinData = await coinsModel.knex().raw(coinSql)
+        var symbolValue = [];
         // console.log(coinData.rowCount)
         for (var i = 0; i < coinData.rowCount; i++) {
             // console.log(coinData.rows[i].coin_name)
             value.push(coinData.rows[i].coin_name)
+        }
+        for (var i = 0; i < coinData.rowCount; i++) {
+            symbolValue.push(coinData.rows[i].coin)
         }
         // console.log(value)
         await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=` + value + `&vs_currencies=usd%2Ceur%2Cinr`, {
@@ -46,6 +51,13 @@ var convertValue = async (coin) => {
                     }
                 }
                 var originObject = currencyData[0][value[i]]
+                var updateTempValue = await tempCoinMarketModel
+                    .query()
+                    .insert({
+                        coin: symbolValue[i],
+                        price: currencyData[0][value[i]].usd,
+                        created_at: new Date()
+                    })
                 var updateValue = await currencyConversionModel
                     .query()
                     .where("deleted_at", null)
