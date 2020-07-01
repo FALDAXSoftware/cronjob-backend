@@ -1098,7 +1098,7 @@ class CronController extends AppController {
       let pendingKYC = await KYCModel
         .query()
         .where('deleted_at', null)
-        .andWhere('status', false)
+        // .andWhere('status', false)
         .andWhere('steps', 3)
         .orderBy('id', 'DESC');
       console.log("pendingKYC....", pendingKYC);
