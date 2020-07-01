@@ -13,10 +13,10 @@ cron.schedule('*/30 * * * *', async (req, res, next) => {
 });
 
 
-// cron.schedule('* * * * *', async (req, res, next) => {
-//     console.log("Started Cron inside 2 minutes");
-//     await cronData.kyccron();
-// })
+cron.schedule('* * * * *', async (req, res, next) => {
+    console.log("Started Cron inside 2 minutes");
+    await cronData.kyccron();
+})
 
 cron.schedule('* * * * *', async (req, res, next) => {
     // await cronData.checkTheresoldNotification();
@@ -50,10 +50,10 @@ cron.schedule('* * * * *', async (req, res, next) => {
     await cronData.checkPaymentStatus();
 });
 
-// cron.schedule('0 7 * * *', async (req, res, next) => {
-//     await cronData.sendResidualReceiveFunds();
-// });
+cron.schedule('0 7 * * *', async (req, res, next) => {
+    await cronData.sendResidualReceiveFunds();
+});
 
-// cron.schedule('0 7 * * *', async (req, res, next) => {
-//     await cronData.sendResidualSendFunds();
-// });
+cron.schedule('0 7 * * *', async (req, res, next) => {
+    await cronData.sendResidualSendFunds();
+});

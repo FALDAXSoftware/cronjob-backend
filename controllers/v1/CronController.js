@@ -939,6 +939,7 @@ class CronController extends AppController {
     if (!kyc_details.ssn) {
       await image2base64(process.env.AWS_S3_URL + kyc_details.front_doc)
         .then((response) => {
+          console.log("response", response)
           kycUploadDetails.scanData = response;
         }).catch(
           (error) => {
