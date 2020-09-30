@@ -18,6 +18,7 @@ cron.schedule('*/30 * * * *', async (req, res, next) => {
 //     await cronData.kyccron();
 // })
 
+
 cron.schedule('* * * * *', async (req, res, next) => {
     // await cronData.checkTheresoldNotification();
 });
